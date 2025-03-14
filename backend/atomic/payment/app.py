@@ -19,12 +19,12 @@ import models
 def process_payment():
     """
     Endpoint to process a payment.
-    Expects JSON payload with: amount, currency, source, description, and optionally idempotency_key.
+    Expects JSON payload with: amount, currency, source, description, and optionally idempotency key.
     """
     data = request.get_json()
 
     # Generate or use provided idempotency key
-    idempotency_key = data.get('idempotency_key') or str(uuid.uuid4())
+    idempotencyKey = data.get('idempotencyKey') or str(uuid.uuid4())
 
     # Validate required fields
     required_fields = ['amount', 'currency', 'source', 'type']
@@ -37,7 +37,7 @@ def process_payment():
         currency=data['currency'],
         source=data['source'],
         type=data['type'],
-        idempotency_key=idempotency_key
+        idempotencyKey=idempotencyKey
     )
 
     if "error" in stripe_response:
@@ -46,46 +46,48 @@ def process_payment():
     # Optionally, store the result in your database here using models.py
 
     return jsonify({
-        "stripe_charge_id": stripe_response['id'],
+        "stripeID": stripe_response['id'],
         "amount": data['amount'],
         "currency": data['currency'],
         "type": data['type'],
         "status": stripe_response.get('status', 'unknown'),
-        "idempotency_key": idempotency_key
+        "idempotencyKey": idempotencyKey
     }), 200
 
 @app.route('/refund', methods=['POST'])
 def process_refund():
     """
     Endpoint to process a refund.
-    Expects JSON payload with: charge_id, amount (if partial refund), and optionally idempotency_key.
+    Expects JSON payload with: chargeID, amount (if partial refund), and optionally idempotency key.
     """
     data = request.get_json()
     
-    if 'charge_id' not in data:
-        return jsonify({"error": "Missing charge_id"}), 400
+    if 'chargeID' not in data:
+        return jsonify({"error": "Missing chargeID"}), 400
 
     # Generate or use provided idempotency key for refund
-    idempotency_key = data.get('idempotency_key') or str(uuid.uuid4())
+    idempotencyKey = data.get('idempotencyKey') or str(uuid.uuid4())
 
     # The amount can be omitted for full refunds; adjust logic accordingly.
     refund_response = refund_charge(
-        charge_id=data['charge_id'],
+        chargeID=data['chargeID'],
         amount=data.get('amount'),
-        idempotency_key=idempotency_key
+        idempotencyKey=idempotencyKey
     )
 
     if "error" in refund_response:
         return jsonify(refund_response), 400
 
     # Optionally, store refund details in your database
+    ### FIGURE OUT HOW TO STORE IN DATABASE!!!
 
     return jsonify({
-        "refund_id": refund_response['id'],
-        "charge_id": data['charge_id'],
+        "transactionID": refund_response['id'],
+        "chargeID": data['chargeID'],
         "amount": data.get('amount'),
+        "type": "refund",
         "status": refund_response.get('status', 'unknown'),
-        "idempotency_key": idempotency_key
+        "idempotencyKey": idempotencyKey
     }), 200
 
 if __name__ == '__main__':
