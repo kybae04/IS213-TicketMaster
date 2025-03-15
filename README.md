@@ -15,8 +15,10 @@ List functions
 ## How to Set Up Ticket Microservice
 1️⃣ Install all required dependencies:
 ```bash
-pip install -r requirements.txt```
+pip install -r requirements.txt
+```
 
 2️⃣ Start the microservice:
 ```bash
-python app.py```
+python app.py
+```
