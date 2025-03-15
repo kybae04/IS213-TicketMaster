@@ -51,7 +51,13 @@ def register_routes(app):
             db.session.add(new_ticket)
             db.session.commit()
         
-            return jsonify({"ticketID": ticket_id, "status": "pending_payment"}), 201
+            return jsonify({
+                "ticketID": ticket_id,
+                "eventID": data['eventID'],
+                "seatID": data['seatID'],
+                "userID": data['userID'],
+                "status": "pending_payment"
+            }), 201
     
         except Exception as e:
             db.session.rollback()
@@ -105,6 +111,7 @@ def register_routes(app):
             logger.info(f"Ticket {ticket_id} confirmed with transaction {data['transactionID']}")
         
             return jsonify({
+                "message": "Ticket successfully confirmed",
                 "ticketID": ticket.ticketID,
                 "status": "confirmed",
                 "transactionID": ticket.transactionID
@@ -130,7 +137,8 @@ def register_routes(app):
                 "seatID": ticket.seatID,
                 "userID": ticket.userID,
                 "status": ticket.status,
-                "transactionID": ticket.transactionID
+                "transactionID": ticket.transactionID,
+                "tradeRequestID": ticket.tradeRequestID
             }), 200
     
         except Exception as e:
@@ -161,7 +169,7 @@ def register_routes(app):
             
                 # Option 2: Prevent voiding if there's an active trade
                 return jsonify({
-                    "error": "Cannot void ticket with active trade request",
+                    "error": "Cannot void ticket while it has an active trade request. Please cancel the trade first.",
                     "ticketID": ticket.ticketID,
                     "tradeRequestID": ticket.tradeRequestID
                 }), 400
@@ -230,7 +238,9 @@ def register_routes(app):
             # Retrieve trade request details (Trade Ticket Service should ensure this is valid)
             trade_request = get_trade_request_details(data["tradeRequestID"])
             if not trade_request:
-                return jsonify({"error": "Failed to retrieve trade request details. Please try again later."}), 500
+                return jsonify({
+                    "error": "Trade Ticket Service is unavailable. Please try again later."
+                }), 503  # Service Unavailable
             
             if trade_request["status"] != "confirmed":
                 return jsonify({"error": "Trade request is not confirmed"}), 400
