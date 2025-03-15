@@ -192,7 +192,11 @@ def register_routes(app):
         try:
             response = requests.get(f"{TRADE_TICKET_SERVICE_URL}/trade/{tradeRequestID}")
             if response.status_code == 200:
-                return response.json()
+                try:
+                    return response.json()
+                except ValueError:
+                    logger.error("Invalid JSON response from Trade Ticket Service")
+                    return None
             else:
                 logger.error(f"Failed to fetch trade request details: {response.status_code}")
                 return None
@@ -215,16 +219,30 @@ def register_routes(app):
             if not ticket:
                 return jsonify({"error": "Ticket not found"}), 404
             
+            # Ensure ticket is currently in a trade process
+            if not ticket.tradeRequestID:
+                return jsonify({"error": "This ticket is not currently involved in any trade"}), 400
+            
             # Ensure that the ticket is actually involved in the trade request
             if ticket.tradeRequestID != data["tradeRequestID"]:
                 return jsonify({"error": "Invalid trade request ID"}), 400
 
             # Retrieve trade request details (Trade Ticket Service should ensure this is valid)
             trade_request = get_trade_request_details(data["tradeRequestID"])
+            if not trade_request:
+                return jsonify({"error": "Failed to retrieve trade request details. Please try again later."}), 500
             
-            if not trade_request or trade_request["status"] != "confirmed":
+            if trade_request["status"] != "confirmed":
                 return jsonify({"error": "Trade request is not confirmed"}), 400
             
+            requested_user_id = trade_request.get("requestedUserID")
+            if not requested_user_id:
+                return jsonify({"error": "Trade request data is incomplete"}), 400
+            
+            # Prevent trading to the same user
+            if requested_user_id == ticket.userID:
+                return jsonify({"error": "You cannot trade a ticket to yourself"}), 400
+
             # Update the userID to reflect the new owner
             ticket.userID = trade_request["requestedUserID"]  # Transfer ownership
             ticket.tradeRequestID = None  # Trade completed, remove association
