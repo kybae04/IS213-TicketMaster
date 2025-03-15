@@ -13,9 +13,10 @@ List functions
 - Once done with task, send Pull Request (PR) to `main`. If no conflicts, merge into `main`. Else, resolve conflicts (please ask others if unsure)
 
 ## How to Set Up Ticket Microservice
-1️⃣ Install dependencies:
+1️⃣ Install all required dependencies:
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt```
 
 2️⃣ Start the microservice:
-`python app.py`
+```bash
+python app.py```
