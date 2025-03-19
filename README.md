@@ -23,11 +23,13 @@ cd backend/atomic/ticket
 pip install -r requirements.txt
 ```
 
-3️⃣Set Up Environment Variables
-Create a .env file and add the following environment variable:
+3️⃣Set Up Environment Variables  
+Create a `.env` file and add the following environment variable:
 ```bash
 DATABASE_URL=postgresql://<your-database-url>
 ```
+- Replace `<your-database-url>` with the actual database connection string.
+- Ensure this file is not committed to GitHub (it is listed in .gitignore).
 
 4️⃣ Start the microservice:
 ```bash
