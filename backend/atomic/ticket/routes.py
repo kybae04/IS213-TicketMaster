@@ -24,16 +24,15 @@ def register_routes(app):
                 if field not in data:
                     return jsonify({"error": f"Missing required field: {field}"}), 400
         
-            # Check if a ticket already exists for the same event, seat, and user
-            existing_ticket = Ticket.query.filter_by(
-                eventID=data['eventID'],
-                seatID=data['seatID'],
-                userID=data['userID']
-            ).first()
+            # Check if ticket with the same idempotencyKey already exists
+            existing_ticket = Ticket.query.filter_by(idempotencyKey=data['idempotencyKey']).first()
 
             if existing_ticket:
                 return jsonify({
                     "ticketID": existing_ticket.ticketID,
+                    "eventID": existing_ticket.eventID,
+                    "seatID": existing_ticket.seatID,
+                    "userID": existing_ticket.userID,
                     "status": existing_ticket.status
                 }), 200  # Return existing ticket details
         
