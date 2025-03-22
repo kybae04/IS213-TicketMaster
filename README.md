@@ -1,37 +1,66 @@
 # IS213-TicketMaster
+
 List functions
 
 ## Setup
-### Prerequisites:
-- Github Setup `git clone https://github.com/kybae04/IS213-TicketMaster.git`
-    - Or use Github Desktop
 
- ### Github Procedures
+### Prerequisites:
+
+- Github Setup `git clone https://github.com/kybae04/IS213-TicketMaster.git`
+  - Or use Github Desktop
+
+### Github Procedures
+
 - Create a branch from `main` for yourself `git checkout -b your-branch-name`
 - Keep commits clear and specific `git commit -m "commit-message"`
 - Push your branch to Github `git push origin your-branch-name`
 - Once done with task, send Pull Request (PR) to `main`. If no conflicts, merge into `main`. Else, resolve conflicts (please ask others if unsure)
 
-## How to Set Up Ticket Microservice
-1️⃣ Navigate to the Ticket Microservice Directory
+## Backend Setup Instructions
+
+1️⃣ Navigate to backend folder
+
 ```bash
-cd backend/atomic/ticket
+cd backend
 ```
 
-2️⃣ Install all required dependencies:
+2️⃣ Create a `.env` file inside the backend folder. Paste the following into your `.env` file and fill in the values.
+
 ```bash
-pip install -r requirements.txt
+# Ticket Microservice DB
+TICKET_DB_URL=postgresql://<user>:<pass>@<host>:<port>/<db_name>
+
+# Seat Allocation Microservice (Supabase example)
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_KEY=<your-secret-key>
+
+# Payment Microservice DB
+PAYMENT_DB_URL=postgresql://<user>:<pass>@<host>:<port>/<db_name>
+STRIPE_SECRET_KEY=
 ```
 
-3️⃣Set Up Environment Variables  
-Create a `.env` file and add the following environment variable:
-```bash
-DATABASE_URL=postgresql://<your-database-url>
-```
-- Replace `<your-database-url>` with the actual database connection string.
 - Ensure this file is not committed to GitHub (it is listed in .gitignore).
 
-4️⃣ Start the microservice:
+🔁 Note:
+If your microservice was previously loading a local `.env` file (inside its own folder),
+you may need to update the `config.py` file inside that microservice to load the shared env file from the `backend/` folder.  
+EXAMPLE:
+
 ```bash
-python app.py
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Go up two levels from /atomic/<service>/config.py to reach /backend/.env
+dotenv_path = Path(__file__).resolve().parents[2] / '.env'
+load_dotenv(dotenv_path)
+
+class Config:
+    SQLALCHEMY_DATABASE_URI = os.getenv("TICKET_DB_URL") # or the relevant key e.g. PAYMENT_DB_URL
+```
+
+3️⃣ Build and run all backend services  
+Make sure Docker is running.
+
+```bash
+docker compose up --build
 ```

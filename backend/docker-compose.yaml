@@ -1,0 +1,41 @@
+services:
+  ticket:
+    build: ./atomic/ticket
+    container_name: ticket_service
+    ports:
+      - "8001:5000"
+    environment:
+      - dbURL=${TICKET_DB_URL}
+    env_file:
+      - .env
+    networks:
+      - ticketmaster_network
+
+  seat_allocation:
+    build: ./atomic/seat_alloc
+    container_name: seatalloc_service
+    ports:
+      - "8002:5000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    env_file:
+      - .env
+    networks:
+      - ticketmaster_network
+
+  payment:
+    build: ./atomic/payment
+    container_name: payment_service
+    ports:
+      - "8003:5000"
+    environment:
+      - dbURL=${PAYMENT_DB_URL}
+    env_file:
+      - .env
+    networks:
+      - ticketmaster_network
+
+networks:
+  ticketmaster_network:
+    driver: bridge
