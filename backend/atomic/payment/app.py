@@ -41,10 +41,10 @@ def process_payment():
     data = request.get_json()
 
     # Generate or use provided idempotency key
-    idempotencyKey = str(uuid.uuid4())
+    #idempotencyKey = str(uuid.uuid4())
 
     # Validate required fields
-    required_fields = ['amount', 'currency', 'source']
+    required_fields = ['amount', 'currency', 'source','idempotency_key']
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
@@ -54,7 +54,7 @@ def process_payment():
         currency=data['currency'],
         source=data['source'],
         chargeType="payment",
-        idempotencyKey=idempotencyKey
+        idempotencyKey=data['idempotency_key']
     )
 
     if "error" in stripe_response:
@@ -68,7 +68,7 @@ def process_payment():
         currency=data['currency'],
         chargeType="payment",
         status=stripe_response.get('status', 'unknown'),
-        idempotencyKey=idempotencyKey
+        idempotencyKey=data['idempotency_key']
     )
 
     try:
@@ -89,7 +89,7 @@ def process_payment():
         "currency": data['currency'],
         "chargeType": "payment",
         "status": stripe_response.get('status', 'unknown'),
-        "idempotencyKey": idempotencyKey
+        "idempotencyKey": data['idempotency_key']
     }), 200
 
 @app.route('/refund', methods=['POST'])
@@ -118,7 +118,7 @@ def process_refund():
     # The amount can be omitted for full refunds; adjust logic accordingly.
     refund_response = refund_charge(
         stripeID=data['stripeID'],
-        idempotencyKey=idempotencyKey
+        idempotencyKey=data['idempotency_key']
     )
 
     if "error" in refund_response:
@@ -131,7 +131,7 @@ def process_refund():
         currency=original_payment.currency,
         chargeType="refund",
         status=refund_response.get('status', 'unknown'),
-        idempotencyKey=idempotencyKey
+        idempotencyKey=data['idempotency_key']
     )
 
     db.session.add(payment_record)
@@ -143,7 +143,7 @@ def process_refund():
         "currency": original_payment.currency,
         "chargeType": "refund",  
         "status": refund_response.get('status', 'unknown'),
-        "idempotencyKey": idempotencyKey
+        "idempotencyKey": data['idempotency_key']
     }), 200
 
 if __name__ == '__main__':
@@ -151,4 +151,4 @@ if __name__ == '__main__':
         # logging.debug("creating database tables")
         db.create_all() 
         # logging.debug("database tables created successfully")
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
