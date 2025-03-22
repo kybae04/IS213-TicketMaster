@@ -43,7 +43,7 @@ STRIPE_SECRET_KEY=
 
 🔁 Note:
 If your microservice was previously loading a local `.env` file (inside its own folder),
-you may need to update the `config.py` file inside that microservice to load the shared env file from the `backend/` folder. 
+you may need to update the `config.py` file inside that microservice to load the shared env file from the `backend/` folder.  
 EXAMPLE:
 
 ```bash
@@ -58,7 +58,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("TICKET_DB_URL") # or the relevant key e.g. PAYMENT_DB_URL
 ```
 
-3️⃣ Build and run all backend services 
+3️⃣ Build and run all backend services  
 Make sure Docker is running.
 
 ```bash
