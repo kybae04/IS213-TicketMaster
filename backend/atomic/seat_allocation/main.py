@@ -30,10 +30,16 @@ def get_seat_availability(event_id):
     return jsonify({"available_seats": available_seats}), 200
 
 
-### Reserve a Seat 
-@app.route("/reserve/<seat_id>", methods=["POST"])
-def reserve_seat(seat_id):
+### Reserve a Seat (with Idempotency)
+@app.route("/reserve/<event_id>/<seat_id>/<idempotency_key>", methods=["POST"])
+def reserve_seat(event_id, seat_id, idempotency_key):
+    existing_key = supabase.table("idempotency_keys").select("*").eq("key", idempotency_key).execute()
     
+    if existing_key.data:
+        return jsonify(existing_key.data[0]["response"]), 200  # Return stored response
+
+    
+        existing_key = supabase.table("idempotency_keys").select("*").eq("key", idempotency_key).execute()
 
     response = supabase.table("seat_allocation").select("*").eq("seatid", seat_id).execute()
     
@@ -53,7 +59,13 @@ def reserve_seat(seat_id):
         reservation_response = {
             "message": "Seat reserved successfully",
             "seatid": seat_id
-        }.execute()
+            }
+
+        supabase.table("idempotency_keys").insert({
+            "key": idempotency_key,
+            "response": reservation_response
+        }).execute()
+
 
         return jsonify(reservation_response), 200
     else:
