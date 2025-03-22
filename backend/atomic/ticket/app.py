@@ -36,4 +36,4 @@ if __name__ == '__main__' and threading.current_thread() == threading.main_threa
         logger.error(f"Failed to create database tables: {str(e)}")
     
     # Start the Flask application
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)  # Disable reloader when using threads
+    app.run(host="0.0.0.0", port=5005, debug=True, use_reloader=False)  # Disable reloader when using threads
