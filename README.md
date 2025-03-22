@@ -36,6 +36,7 @@ SUPABASE_KEY=<your-secret-key>
 
 # Payment Microservice DB
 PAYMENT_DB_URL=postgresql://<user>:<pass>@<host>:<port>/<db_name>
+STRIPE_SECRET_KEY=
 ```
 
 - Ensure this file is not committed to GitHub (it is listed in .gitignore).
