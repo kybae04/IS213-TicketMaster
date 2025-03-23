@@ -3,7 +3,7 @@ services:
     build: ./atomic/ticket
     container_name: ticket_service
     ports:
-      - "8001:5000"
+      - "8501:5005"
     environment:
       - dbURL=${TICKET_DB_URL}
     env_file:
@@ -12,10 +12,10 @@ services:
       - ticketmaster_network
 
   seat_allocation:
-    build: ./atomic/seat_alloc
+    build: ./atomic/seat_allocation
     container_name: seatalloc_service
     ports:
-      - "8002:5000"
+      - "8502:5000"
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
@@ -28,7 +28,7 @@ services:
     build: ./atomic/payment
     container_name: payment_service
     ports:
-      - "8003:5000"
+      - "8503:5001"
     environment:
       - dbURL=${PAYMENT_DB_URL}
     env_file:
@@ -36,6 +36,78 @@ services:
     networks:
       - ticketmaster_network
 
+  buy_ticket:
+    build: ./composite/buy_ticket
+    container_name: buy_ticket_service
+    ports:
+      - "8504:8002"
+    depends_on:
+      - seat_allocation
+      - payment
+      - ticket
+    networks:
+      - ticketmaster_network
+
+  kong-database:
+    image: postgres:17.4
+    container_name: kong-database
+    restart: always
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kong
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - ticketmaster_network
+
+  kong-migration:
+    image: kong/kong-gateway:3.9
+    command: "kong migrations bootstrap"
+    restart: on-failure
+    depends_on:
+      - kong-database
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: kong
+      KONG_PG_USER: kong
+    networks:
+      - ticketmaster_network
+
+  kong:
+    image: kong/kong-gateway:3.9
+    container_name: kong
+    restart: always
+    depends_on:
+      - kong-database
+      - kong-migration
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: kong
+      KONG_PG_USER: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+      KONG_ADMIN_GUI_URL: http://localhost:8202
+    ports:
+      - "8000:8000" # Public API gateway port
+      - "8001:8001" # Admin API (CLI/config)
+      - "8202:8002" # Kong Manager (GUI)
+    networks:
+      - ticketmaster_network
+
 networks:
   ticketmaster_network:
     driver: bridge
+
+volumes:
+  pgdata:

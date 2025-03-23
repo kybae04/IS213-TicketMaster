@@ -4,9 +4,9 @@ import uuid  # For generating idempotency keys
 
 app = Flask(__name__)
 
-SEAT_SERVICE_URL = "http://127.0.0.1:5000" 
-PAYMENT_SERVICE_URL = "http://127.0.0.1:5001"
-TICKET_SERVICE_URL = "http://127.0.0.1:5005"
+SEAT_SERVICE_URL = "http://seat_allocation:5000" 
+PAYMENT_SERVICE_URL = "http://payment:5001"
+TICKET_SERVICE_URL = "http://ticket:5005"
 
 @app.route("/view_availability/<event_id>")
 def view_availability(event_id):
