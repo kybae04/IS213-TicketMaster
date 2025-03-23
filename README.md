@@ -24,7 +24,7 @@ List functions
 cd backend
 ```
 
-2️⃣ Create a `.env` file inside the backend folder. Paste the following into your `.env` file and fill in the values.
+2️⃣ Create a `.env` file inside the backend folder. Paste the following into your `.env` file and fill in the values. (or refer to the copy sent in our ESD chat)
 
 ```bash
 # Ticket Microservice DB
@@ -41,26 +41,33 @@ STRIPE_SECRET_KEY=
 
 - Ensure this file is not committed to GitHub (it is listed in .gitignore).
 
-🔁 Note:
-If your microservice was previously loading a local `.env` file (inside its own folder),
-you may need to update the `config.py` file inside that microservice to load the shared env file from the `backend/` folder.  
-EXAMPLE:
-
-```bash
-from dotenv import load_dotenv
-from pathlib import Path
-
-# Go up two levels from /atomic/<service>/config.py to reach /backend/.env
-dotenv_path = Path(__file__).resolve().parents[2] / '.env'
-load_dotenv(dotenv_path)
-
-class Config:
-    SQLALCHEMY_DATABASE_URI = os.getenv("TICKET_DB_URL") # or the relevant key e.g. PAYMENT_DB_URL
-```
-
 3️⃣ Build and run all backend services  
-Make sure Docker is running.
+Make sure Docker is running first.
 
 ```bash
 docker compose up --build
 ```
+
+## 🧭 API Gateway (Kong)
+
+Kong is set up as our API Gateway, exposing all microservice endpoints under a single gateway at:
+
+```bash
+http://localhost:8000
+```
+
+You can view and manage Kong services/routes via the Kong Manager GUI:
+
+```bash
+http://localhost:8202
+```
+
+🚀 Please refer to the [Google Sheets](https://docs.google.com/spreadsheets/d/14c1HN3iYUs-AQFFWOx4uZSJtxk_BLn3yysNoMiGVnwI/edit?usp=sharing) for available gateway routes
+
+To stop all services
+
+```bash
+docker compose down
+```
+
+‼️DO NOT run `docker compose down --volumes` (please don't delete all my Kong 🦍)
