@@ -3,13 +3,13 @@ from flask import Flask, request, jsonify
 from supabase import create_client
 import os
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 # Initialize Flask App
 app = Flask(__name__)
 CORS(app)
 # Supabase Configuration
-load_dotenv()
+load_dotenv(find_dotenv())
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
