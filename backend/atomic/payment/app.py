@@ -1,5 +1,5 @@
 # app.py
-import uuid
+# import uuid
 import os
 import logging
 from flask import Flask, request, jsonify
@@ -31,13 +31,15 @@ def process_payment():
     Endpoint to process a payment.
     Expects JSON payload with: 
     {
-        "amount": 5000,
-        "currency": "usd",
+        "amount": 150.00,
+        "currency": "USD",
         "source": "tok_visa",
+        "idempotency_key": "unique_key_here"
     }
 
-    Note that amount is in CENTS
+    Note that amount is in dollars, to 2dp
     """
+
     data = request.get_json()
 
     # Generate or use provided idempotency key
@@ -48,9 +50,12 @@ def process_payment():
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
+    # convert amount to cents
+    amount_cents = int(data['amount'] * 100)
+
     # Create the charge via Stripe
     stripe_response = create_charge(
-        amount=data['amount'],
+        amount=amount_cents,
         currency=data['currency'],
         source=data['source'],
         chargeType="payment",
@@ -99,16 +104,17 @@ def process_refund():
     Expects JSON payload with: 
     {
         "stripeID": "ch_1ExampleID",
+        "idempotency_key": "unique_key_here"
     }
     Note: amount is in CENTS
     """
     data = request.get_json()
     
-    if 'stripeID' not in data:
+    if 'stripeID' not in data and 'idempotency_key' not in data:
         return jsonify({"error": "Missing stripeID"}), 400
 
     # Generate or use provided idempotency key for refund
-    idempotencyKey = str(uuid.uuid4())
+    # idempotencyKey = str(uuid.uuid4())
 
     # Retrieve the original payment record from the database
     original_payment = Payment.query.filter_by(stripeID=data['stripeID']).first()
