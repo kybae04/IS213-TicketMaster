@@ -102,7 +102,7 @@ def release_seat(seat_id):
 
     seat = response.data[0]
 
-    if seat["status"] != "unavailable":
+    if seat["status"] not in ["unavailable", "reserved"]:
         return jsonify({"error": "Seat is not unavailable"}), 409
 
     update_response = supabase.table("seat_allocation").update({
