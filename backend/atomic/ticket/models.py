@@ -11,3 +11,14 @@ class Ticket(db.Model):
     status = db.Column(db.String(20), nullable=False, default="pending_payment")
     transactionID = db.Column(db.String(64), unique=True, nullable=True) 
     tradeRequestID = db.Column(db.String(64), nullable=True)  # Associated trade request ID
+
+    def to_dict(self):
+        return {
+            "ticketID": self.ticketID,
+            "eventID": self.eventID,
+            "seatID": self.seatID,
+            "status": self.status,
+            "tradeRequestID": self.tradeRequestID,
+            "transactionID": self.transactionID,
+            "userID": self.userID
+        }

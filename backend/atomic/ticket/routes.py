@@ -144,6 +144,18 @@ def register_routes(app):
             logger.error(f"Error retrieving ticket: {str(e)}")
             return jsonify({"error": "Failed to retrieve ticket"}), 500
     
+    # Get Tickets by Transaction ID
+    @app.route('/tickets/transaction/<transaction_id>', methods=['GET'])
+    def get_tickets_by_transaction(transaction_id):
+        try:
+            tickets = Ticket.query.filter_by(transactionID=transaction_id).all()
+            if tickets == []:
+                return jsonify({"error": "Transaction ID does not exist"}), 404
+            return jsonify([ticket.to_dict() for ticket in tickets]), 200
+        except Exception as e:
+            logger.error(f"Error retrieving tickets: {str(e)}")
+            return jsonify({"error": "Failed to retrieve tickets"}), 500
+
     # Void ticket
     @app.route('/ticket/void/<ticketID>', methods=['PUT'])
     def void_ticket(ticketID):
