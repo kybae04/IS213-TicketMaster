@@ -48,8 +48,8 @@ def purchase(event_id, seat_id):
     elif reserve_response.status_code != 200:
         return jsonify({"error":"Reservation failed."}),500
 
-    #print(jsonify({"message": "Ticket successfully reserved", "seat_id": seat_id}), 200)
-
+    #return jsonify({"message": "Ticket successfully reserved", "seat_id": seat_id}), 200
+    print(jsonify({"message": "Ticket successfully reserved", "seat_id": seat_id}), 200)
     # Step 3: Create pending ticket
 
     ticket_data = {'eventID':event_id, 'seatID':seat_id, 'userID':"user387", 'idempotencyKey':idempotency_key}
@@ -63,18 +63,25 @@ def purchase(event_id, seat_id):
 
     # Step 4: Process Payment
 
-    #amount should be extracted from event? currency should be all be SGD, source retrieve from UI
+    #input retrieved from UI
     payment_data = {"amount": 10000, "currency": "SGD", "source": "tok_visa", "idempotency_key":idempotency_key}
     payment_response = requests.post(f"{PAYMENT_SERVICE_URL}/payment", json=payment_data)
     #return(payment_response.json())
     if payment_response.status_code != 200:
         # Step 4: Release Seat if Payment Fails
         #requests.put(f"{SEAT_SERVICE_URL}/release/{seat_id}/{idempotency_key}")
-        return jsonify({"error": "Payment failed"}), 402
+        return jsonify({"error": "Payment failed", "ticket_id":ticket_id}), 402
 
     # jsonify({"message": "Payment successful."}), 200
 
-    # Step 5: Confirm Ticket
+    # Step 5: Change seat availability to unavailable
+    
+    confirm_seat_response = request.put(f"{SEAT_SERVICE_URL}/confirm/{seat_id}", json={'seat_id':seat_id})
+    if confirm_seat_response.status_code != 200:
+        return (confirm_seat_response.json().get("error")), 404
+    return confirm_seat_response.json().get('message'),200
+
+    # Step 6: Confirm Ticket
     
     #payment service does not assign transactionID 
     transaction_data = {"transactionID": payment_response.json().get("stripeID")}
@@ -90,7 +97,25 @@ def purchase(event_id, seat_id):
     elif confirm_ticket_response.status_code == 404:
         return {"error": "Ticket not found"}
     else:
-        return {"error": "Failed to confirm ticket"}
+        return {"error": "Failed to confirm ticket", "ticket_id":ticket_id}
 
+    
+
+@app.route("/timeout/<seat_id>/<ticket_id>", methods=["POST"])
+def timeout(ticket_id, seat_id):
+    
+    # Step 1: release seat
+    release_seat_response = requests.put(f"{SEAT_SERVICE_URL}/release/{seat_id}", json={'seat_id':seat_id})
+    if release_seat_response.status_code != 200:
+        return (release_seat_response.json().get("error")), 404
+    print(release_seat_response.json().get('message'),200)
+
+    # Step 2: Void pending ticket
+    void_ticket_response = requests.put(f"{TICKET_SERVICE_URL}/ticket/void/{ticket_id}", json={"ticket_id":ticket_id})
+
+    if void_ticket_response.status_code != 200:
+        return(void_ticket_response.json().get('error'))
+    return jsonify({"message": "Timeout. Please select tickets again."})
+    
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8002, debug=True)
