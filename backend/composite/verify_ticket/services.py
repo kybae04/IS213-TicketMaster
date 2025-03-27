@@ -13,18 +13,6 @@ def fetch_ticket(ticket_id):
         print(f"Error fetching ticket: {e}")
         return None
 
-# def fetch_event(event_id):
-#     """Fetch event details from Event Atomic Service."""
-#     try:
-#         response = requests.get(f"{EVENT_SERVICE_URL}/{event_id}")
-#         if response.status_code == 200:
-#             return response.json()
-#         return None
-#     except requests.exceptions.RequestException as e:
-#         print(f"Error fetching event: {e}")
-#         return None
-    
-
 def fetch_event(event_id):
     """Fetch event details from the Event atomic microservice."""
     url = f"{EVENT_SERVICE_URL}/{event_id}"
@@ -50,10 +38,22 @@ def fetch_event(event_id):
 def fetch_seat(seat_id):
     """Fetch seat details from Seat Atomic Service."""
     try:
-        response = requests.get(f"{SEAT_SERVICE_URL}/seat/{seat_id}")
+        print(f"Fetching seat details for seat_id: {seat_id}")
+        
+        # Sending the GET request to the Seat Atomic Service
+        response = requests.get(f"{SEAT_SERVICE_URL}/seat/details/{seat_id}")
+        
+        # Log the status code and response
+        print(f"Response Status Code: {response.status_code}")
+        
         if response.status_code == 200:
-            return response.json()
-        return None
+            seat_data = response.json()
+            print(f"Fetched seat data: {seat_data}")
+            return seat_data
+        else:
+            print(f"Failed to fetch seat. Status Code: {response.status_code}")
+            return None
     except requests.exceptions.RequestException as e:
+        # Log the error if the request fails
         print(f"Error fetching seat: {e}")
         return None
