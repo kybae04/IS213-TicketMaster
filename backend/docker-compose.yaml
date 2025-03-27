@@ -47,7 +47,17 @@ services:
       - ticket
     networks:
       - ticketmaster_network
-
+  trade_ticket:
+    build: ./composite/trade_ticket
+    container_name: trade_ticket_service
+    ports:
+      - "8505:8003"
+    depends_on:
+      - seat_allocation
+      - payment
+      - ticket
+    networks:
+      - ticketmaster_network
   kong-database:
     image: postgres:17.4
     container_name: kong-database
@@ -104,6 +114,16 @@ services:
       - "8202:8002" # Kong Manager (GUI)
     networks:
       - ticketmaster_network
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - ticketmaster_network
 
 networks:
   ticketmaster_network:
@@ -111,3 +131,4 @@ networks:
 
 volumes:
   pgdata:
+  rabbitmq_data:
