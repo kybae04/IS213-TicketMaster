@@ -114,7 +114,7 @@ def create_trade_request():
             print(f"Error setting trade ID on ticket 1: {str(e)}")
             return jsonify({"error": f"Failed to set trade request ID on ticket {ticket1_id}: {str(e)}"}), 500
         
-        # Set trade ID on ticket 2 using PATCH (not POST)
+        # Set trade ID on ticket 2 using POST
         try:
             response2 = requests.post(
                 f"{TICKET_SERVICE_URL}/ticket/{ticket2_id}/set-trade-id",
@@ -186,106 +186,178 @@ def create_trade_request():
         traceback.print_exc()
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
-# Add this function to peek at messages in RabbitMQ without consuming them
 def peek_messages_from_rabbitmq(queue_name, user_id=None):
     """
-    Peek at messages in RabbitMQ queue without consuming them
+    Peek at all messages in RabbitMQ queue by consuming, storing, and requeueing them
     If user_id is provided, filter for messages related to that user
     """
     messages = []
+    credentials = pika.PlainCredentials('guest', 'guest')
+    params = pika.ConnectionParameters(
+        host=RABBITMQ_HOST, 
+        port=RABBITMQ_PORT, 
+        credentials=credentials,
+        heartbeat=600,  # Increase heartbeat for larger queues
+        blocked_connection_timeout=300  # Increase timeout
+    )
+
     try:
-        # Establish connection
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT)
-        )
+        connection = pika.BlockingConnection(params)
         channel = connection.channel()
+
+        # Get total messages count
+        queue_info = channel.queue_declare(queue=queue_name, passive=True)
+        total_messages = queue_info.method.message_count
+        print(f"Queue '{queue_name}' has {total_messages} messages")
         
-        # Declare queue (ensure it exists)
-        channel.queue_declare(queue=queue_name, durable=True)
+        if total_messages == 0:
+            connection.close()
+            return [], True
+
+        # Create a temporary queue for storing messages during processing
+        result = channel.queue_declare(queue='', exclusive=True)
+        temp_queue_name = result.method.queue
         
-        # Get message count
-        queue_info = channel.queue_declare(queue=queue_name, durable=True, passive=True)
-        message_count = queue_info.method.message_count
+        # Process each message in the queue
+        consumed_count = 0
+        skipped_count = 0
         
-        # Collect messages without actually removing them from the queue
-        for _ in range(message_count):
-            method_frame, header_frame, body = channel.basic_get(queue=queue_name, auto_ack=False)
-            if method_frame:
-                # Parse message
-                message = json.loads(body)
-                
-                # If user_id is provided, filter messages
-                if user_id is None or (
-                    message.get("requestedUserID") == user_id or 
-                    message.get("requesterID") == user_id
-                ):
-                    messages.append(message)
-                
-                # Return message to queue (we're just peeking)
-                channel.basic_nack(delivery_tag=method_frame.delivery_tag, requeue=True)
-            else:
+        for _ in range(total_messages):
+            # Basic get with auto_ack=True to remove from original queue
+            method_frame, header_frame, body = channel.basic_get(queue=queue_name, auto_ack=True)
+            
+            if not method_frame:
+                print(f"No more messages to fetch after {consumed_count} messages")
                 break
                 
+            consumed_count += 1
+            
+            # Process the message
+            try:
+                message = json.loads(body)
+                messages.append(message)
+                print(f"Processed message {consumed_count}/{total_messages}")
+                
+                # Always requeue the message regardless of filtering
+                channel.basic_publish(
+                    exchange='',
+                    routing_key=queue_name,
+                    body=body,
+                    properties=header_frame
+                )
+            except json.JSONDecodeError:
+                print(f"Failed to decode message {consumed_count}, skipping...")
+                skipped_count += 1
+                
+                # Still requeue even if we can't decode it
+                channel.basic_publish(
+                    exchange='',
+                    routing_key=queue_name,
+                    body=body,
+                    properties=header_frame
+                )
+        
         connection.close()
+        print(f"Successfully processed {consumed_count} messages, skipped {skipped_count}")
+
+        # Filter messages if user_id provided
+        if user_id:
+            original_count = len(messages)
+            messages = [
+                msg for msg in messages
+                if msg.get("requestedUserID") == user_id or msg.get("requesterID") == user_id
+            ]
+            print(f"Filtered from {original_count} to {len(messages)} messages for user {user_id}")
+
         return messages, True
+
     except Exception as e:
         print(f"Error peeking messages from RabbitMQ: {str(e)}")
+        traceback.print_exc()
         return [], False
-
-# (5-7) Get all pending trade requests for a user
-@app.route('/trade-requests/<requested_user_id>', methods=['GET'])
-def get_pending_trade_requests(requested_user_id):
-    # Try to get pending requests from RabbitMQ
-    messages, success = peek_messages_from_rabbitmq(TRADE_QUEUE, requested_user_id)
     
-    if success:
-        # Group messages by tradeRequestID and keep only the latest status for each
-        trade_requests_dict = {}
-        for message in messages:
-            trade_id = message.get("tradeRequestID")
-            if trade_id:
-                # If this is a new trade request or a newer message for an existing one
-                if trade_id not in trade_requests_dict or (
-                    "timestamp" in message and 
-                    message["timestamp"] > trade_requests_dict[trade_id].get("timestamp", "")
-                ):
-                    trade_requests_dict[trade_id] = message
-        
-        # Filter for only pending trade requests
-        pending_requests = [
-            req for req in trade_requests_dict.values() 
-            if req.get("status") == "pending"
-        ]
-        
-        if pending_requests:
-            return jsonify(pending_requests), 200
+@app.route('/trade-requests/<user_id>', methods=['GET'])
+def get_pending_trade_requests(user_id):
+    """Get all trade requests related to a user (both as requester and requestedUser)"""
     
-    # If no success with RabbitMQ or no pending requests, try the ticket service
+    # Get status filter from query params if provided
+    status_filter = request.args.get('status')
+    
+    # Get all trade requests from RabbitMQ
+    messages, success = peek_messages_from_rabbitmq(TRADE_QUEUE, None)  # Pass None to get all messages
+    
+    if not success:
+        print("Failed to retrieve messages from RabbitMQ")
+        return jsonify([]), 200  # Return empty array if we can't get messages
+    
+    # Group messages by tradeRequestID and keep only the latest status for each
+    trade_requests_dict = {}
+    for message in messages:
+        trade_id = message.get("tradeRequestID")
+        if trade_id:
+            # If this is a new trade request or a newer message for an existing one
+            if trade_id not in trade_requests_dict or (
+                "timestamp" in message and 
+                message["timestamp"] > trade_requests_dict[trade_id].get("timestamp", "")
+            ):
+                trade_requests_dict[trade_id] = message
+    
+    # Filter for requests where the user is involved
+    user_trade_requests = []
+    # Changed 'request' to 'trade_req' to avoid name conflict
+    for trade_req in trade_requests_dict.values():
+        # Check if the user is either the requester or the requested user
+        if (trade_req.get("requesterID") == user_id or trade_req.get("requestedUserID") == user_id):
+            # Add a field to indicate the user's role in this trade request
+            if trade_req.get("requesterID") == user_id:
+                trade_req["userRole"] = "requester"
+            else:
+                trade_req["userRole"] = "requested"
+                
+            # Apply status filter if provided
+            if not status_filter or trade_req.get("status") == status_filter:
+                # Add the request to user_trade_requests
+                user_trade_requests.append(trade_req)
+    
+    # Sort trade requests by timestamp (newest first)
+    user_trade_requests.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    print(f"Found {len(user_trade_requests)} trade requests for user {user_id}")
+    return jsonify(user_trade_requests), 200
+    
+@app.route('/debug/user-trade-requests/<user_id>', methods=['GET'])
+def debug_user_trade_requests(user_id):
+    """Debug endpoint to see all messages related to a user in the RabbitMQ queue"""
     try:
-        response = requests.get(f"{TICKET_SERVICE_URL}/trade-requests/pending/{requested_user_id}")
-        if response.status_code == 200:
-            return jsonify(response.json()), 200
-            
+        # First, get all messages
+        all_messages, all_success = peek_messages_from_rabbitmq(TRADE_QUEUE, None)
+        
+        # Then, filter for user messages
+        user_messages, user_success = peek_messages_from_rabbitmq(TRADE_QUEUE, user_id)
+        
+        # Get trade requests from the existing endpoint for comparison
+        with app.test_client() as client:
+            response = client.get(f'/trade-requests/{user_id}')
+            endpoint_results = response.get_json()
+        
+        return jsonify({
+            "user_id": user_id,
+            "queue_status": {
+                "all_messages_success": all_success,
+                "user_messages_success": user_success,
+                "total_messages": len(all_messages),
+                "user_related_messages": len(user_messages)
+            },
+            "all_messages": all_messages,
+            "user_messages": user_messages,
+            "endpoint_results": endpoint_results,
+            "endpoint_count": len(endpoint_results) if endpoint_results else 0
+        }), 200
     except Exception as e:
-        print(f"Error fetching trade requests from ticket service: {str(e)}")
-    
-    # Fallback to simulated data if everything else fails
-    pending_requests = [
-        {
-            "tradeRequestID": "example-request-id",
-            "ticketID": "user1-ticket-id",
-            "requesterID": "user1-id",
-            "requestedTicketID": "user2-ticket-id", 
-            "requestedUserID": requested_user_id,
-            "status": "pending",
-            "timestamp": datetime.now().isoformat()
-        }
-    ]
-    return jsonify(pending_requests), 200
+        print(f"Error in debug endpoint: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
-
-# Add a function to find and consume a specific trade request from the queue
-# ...existing code...
 
 # Fix the find_and_process_trade_request function
 def find_and_process_trade_request(queue_name, trade_request_id, new_status):
@@ -370,7 +442,6 @@ def find_and_process_trade_request(queue_name, trade_request_id, new_status):
     except Exception as e:
         print(f"Error processing trade request from RabbitMQ: {str(e)}")
         return None, False
-# Add this function below find_and_process_trade_request
 
 def remove_message_from_queue(queue_name, trade_request_id):
     """
@@ -461,7 +532,7 @@ def accept_trade_request():
             # Use the trade_ticket_by_request_id endpoint to process the trade
             print(f"Calling ticket service for trade with ID: {trade_request_id}")
             
-            response = requests.put(
+            response = requests.post(
                 f"{TICKET_SERVICE_URL}/ticket/trade/request/{trade_request_id}",
                 json={}  # No body needed as trade request ID is in URL path
             )
@@ -514,32 +585,116 @@ def accept_trade_request():
 # Add a new endpoint to cancel a trade request - Updated to handle message consumption
 @app.route('/trade-request/cancel', methods=['PATCH'])
 def cancel_trade_request():
-    data = request.json
-    trade_request_id = data["tradeRequestID"]
-    cancelling_user_id = data["userID"]
-    
-    # Cancel trade request message
-    cancel_status = {
-        "status": "cancelled",
-        "cancelledBy": cancelling_user_id,
-        "cancelledAt": datetime.now().isoformat()
-    }
-    
-    # Find the original trade request and update its status
-    original_message, success = find_and_process_trade_request(
-        TRADE_QUEUE, trade_request_id, cancel_status
-    )
-    
-    if not success:
-        return jsonify({
-            "error": "Failed to cancel trade request. Request may not exist or is not in a pending state."
-        }), 404
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+            
+        trade_request_id = data.get("tradeRequestID")
+        cancelling_user_id = data.get("userID")
         
-    return jsonify({
-        "message": "Trade request cancelled successfully.",
-        "tradeRequestID": trade_request_id
-    }), 200
-
+        if not trade_request_id or not cancelling_user_id:
+            return jsonify({"error": "Missing required fields: tradeRequestID or userID"}), 400
+        
+        # Find the original trade request and update its status
+        original_message, success = find_and_process_trade_request(
+            TRADE_QUEUE, trade_request_id, {
+                "status": "cancelled",
+                "cancelledBy": cancelling_user_id,
+                "cancelledAt": datetime.now().isoformat()
+            }
+        )
+        
+        if not success:
+            return jsonify({
+                "error": "Failed to cancel trade request. Request may not exist or is not in a pending state."
+            }), 404
+            
+        # Extract ticket IDs from the original trade request
+        ticket1_id = original_message.get("ticketID")
+        ticket2_id = original_message.get("requestedTicketID")
+        
+        if not ticket1_id or not ticket2_id:
+            return jsonify({
+                "error": "Invalid trade request data: missing ticket IDs",
+                "tradeRequestID": trade_request_id
+            }), 500
+            
+        # Clear trade request IDs from both tickets in Supabase
+        tickets_updated = True
+        errors = []
+        
+        try:
+            # Clear trade request ID on ticket 1
+            response1 = requests.post(
+                f"{TICKET_SERVICE_URL}/ticket/{ticket1_id}/set-trade-id",
+                json={"tradeRequestID": None}
+            )
+            
+            print(f"Clearing trade ID on ticket 1 - Status: {response1.status_code}")
+            
+            if response1.status_code != 200:
+                tickets_updated = False
+                errors.append({
+                    "ticket": ticket1_id, 
+                    "status": response1.status_code,
+                    "message": response1.text
+                })
+                
+            # Clear trade request ID on ticket 2    
+            response2 = requests.post(
+                f"{TICKET_SERVICE_URL}/ticket/{ticket2_id}/set-trade-id",
+                json={"tradeRequestID": None}
+            )
+            
+            print(f"Clearing trade ID on ticket 2 - Status: {response2.status_code}")
+            
+            if response2.status_code != 200:
+                tickets_updated = False
+                errors.append({
+                    "ticket": ticket2_id, 
+                    "status": response2.status_code,
+                    "message": response2.text
+                })
+                
+        except Exception as e:
+            print(f"Error clearing trade request IDs from tickets: {str(e)}")
+            tickets_updated = False
+            errors.append({"message": str(e)})
+            
+        # Remove all messages with this trade request ID from the queue
+        queue_cleaned = remove_message_from_queue(TRADE_QUEUE, trade_request_id)
+        
+        # Return different responses based on success of ticket updates
+        if tickets_updated and queue_cleaned:
+            return jsonify({
+                "message": "Trade request cancelled successfully. Tickets and queue updated.",
+                "tradeRequestID": trade_request_id,
+                "tickets": [ticket1_id, ticket2_id]
+            }), 200
+        elif tickets_updated:
+            return jsonify({
+                "message": "Trade request cancelled but queue cleanup failed.",
+                "tradeRequestID": trade_request_id,
+                "tickets": [ticket1_id, ticket2_id]
+            }), 200
+        elif queue_cleaned:
+            return jsonify({
+                "message": "Trade request cancelled but ticket updates failed.",
+                "tradeRequestID": trade_request_id,
+                "errors": errors
+            }), 207  # 207 Multi-Status
+        else:
+            return jsonify({
+                "message": "Trade request cancelled but both ticket updates and queue cleanup failed.",
+                "tradeRequestID": trade_request_id,
+                "errors": errors
+            }), 207  # 207 Multi-Status
+            
+    except Exception as e:
+        print(f"Unexpected error in cancel_trade_request: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 @app.route('/trade-status/<ticket_id>', methods=['GET'])
 def get_ticket_trade_status(ticket_id):
     """Get the trade status of a ticket"""
