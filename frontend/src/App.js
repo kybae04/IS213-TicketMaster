@@ -17,19 +17,22 @@ import PageLayout from './components/PageLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import RouteTransition from './components/RouteTransition';
+import { EventProvider } from './context/EventContext';
 
 // Force dark mode
 document.documentElement.classList.add('dark');
 
 function App() {
   return (
-    <div className="App">
-      <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </AuthProvider>
-    </div>
+    <Router>
+      <EventProvider>
+        <AuthProvider>
+          <div className="App">
+            <AppRoutes />
+          </div>
+        </AuthProvider>
+      </EventProvider>
+    </Router>
   );
 }
 

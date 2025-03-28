@@ -15,7 +15,7 @@ A modern web application for event discovery and ticket purchasing, built with R
 - React.js (Create React App)
 - Tailwind CSS for styling
 - Supabase for authentication and database
-- Optional: ShadCN UI components or other UI libraries as needed
+- ShadCN UI components
 
 ## Project Structure
 
