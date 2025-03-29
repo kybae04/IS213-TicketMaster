@@ -4,9 +4,9 @@ import uuid  # For generating idempotency keys
 
 app = Flask(__name__)
 
-SEAT_SERVICE_URL = "http://seat_allocation:5000" 
-PAYMENT_SERVICE_URL = "http://payment:5001"
-TICKET_SERVICE_URL = "http://ticket:5005"
+SEAT_SERVICE_URL = "http://seatalloc_service:5000" 
+PAYMENT_SERVICE_URL = "http://payment_service:5001"
+TICKET_SERVICE_URL = "http://ticket_service:5005"
 
 @app.route("/view_availability/<event_id>")
 def view_availability(event_id):
@@ -79,7 +79,6 @@ def purchase(event_id, seat_id):
     confirm_seat_response = request.put(f"{SEAT_SERVICE_URL}/confirm/{seat_id}", json={'seat_id':seat_id})
     if confirm_seat_response.status_code != 200:
         return (confirm_seat_response.json().get("error")), 404
-    return confirm_seat_response.json().get('message'),200
 
     # Step 6: Confirm Ticket
     
@@ -99,7 +98,6 @@ def purchase(event_id, seat_id):
     else:
         return {"error": "Failed to confirm ticket", "ticket_id":ticket_id}
 
-    
 
 @app.route("/timeout/<seat_id>/<ticket_id>", methods=["POST"])
 def timeout(ticket_id, seat_id):

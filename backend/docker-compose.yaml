@@ -47,6 +47,7 @@ services:
       - ticket
     networks:
       - ticketmaster_network
+
   trade_ticket:
     build: ./composite/trade_ticket
     container_name: trade_ticket_service
@@ -58,6 +59,30 @@ services:
       - ticket
     networks:
       - ticketmaster_network
+
+  cancel_ticket:
+    build: ./composite/cancel_ticket
+    container_name: cancel_ticket_service
+    ports:
+      - "8506:6001"
+    depends_on:
+      - seat_allocation
+      - payment
+      - ticket
+    networks:
+      - ticketmaster_network
+
+  verify_ticket:
+    build: ./composite/verify_ticket
+    container_name: verify_ticket_service
+    ports:
+      - "8507:6002"
+    depends_on:
+      - ticket
+      - seat_allocation
+    networks:
+      - ticketmaster_network
+
   kong-database:
     image: postgres:17.4
     container_name: kong-database

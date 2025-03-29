@@ -23,7 +23,7 @@ db.init_app(app)
 
 @app.route('/')
 def home():
-    return "health check"
+    return jsonify({"message": "health check"}), 200
 
 @app.route('/payment', methods=['POST'])
 def process_payment():
@@ -157,4 +157,4 @@ if __name__ == '__main__':
         # logging.debug("creating database tables")
         db.create_all() 
         # logging.debug("database tables created successfully")
-    app.run(debug=True, port=5001)
+    app.run(debug=True, host="0.0.0.0", port=5001)
