@@ -16,6 +16,70 @@ const TradingPage = () => {
   const [ticketToTrade, setTicketToTrade] = useState(null);
   const availableTicketsRef = useRef(null);
 
+  // Fetch available tickets for trade
+  const fetchAvailableTicketsForTrade = useCallback((ticket, seatNumber) => {
+    setIsLoading(true);
+    
+    // In a real app, this would be an API call
+    /*
+    * MICROSERVICE INTEGRATION POINT:
+    * 
+    * In production, you would fetch from the trading microservice:
+    * const response = await fetch(`https://api-gateway.example.com/trading/available-tickets?category=${ticket.category}&eventTitle=${ticket.eventTitle}&seat=${seatNumber}`, {
+    *   headers: { Authorization: `Bearer ${token}` }
+    * });
+    * const data = await response.json();
+    */
+    
+    // For demo purposes, use mock data with a short delay
+    setTimeout(() => {
+      const mockAvailableTickets = [
+        {
+          id: 'TKT-2468-1357',
+          eventTitle: ticket.eventTitle,
+          eventDate: ticket.eventDate,
+          eventTime: ticket.eventTime,
+          location: ticket.location,
+          category: ticket.category,
+          section: 'B',
+          row: '3',
+          seats: ['5'],
+          price: ticket.price / ticket.seats.length, // Price per seat
+          ownerName: 'John Smith',
+          ownerRating: 4.8,
+          tradePreference: 'same-event',
+          eventImage: ticket.eventImage
+        },
+        {
+          id: 'TKT-1357-2468',
+          eventTitle: ticket.eventTitle,
+          eventDate: ticket.eventDate,
+          eventTime: ticket.eventTime,
+          location: ticket.location,
+          category: ticket.category,
+          section: 'A',
+          row: '5',
+          seats: ['20'],
+          price: ticket.price / ticket.seats.length, // Price per seat
+          ownerName: 'Emily Johnson',
+          ownerRating: 4.9,
+          tradePreference: 'any',
+          eventImage: ticket.eventImage
+        }
+      ];
+      
+      setAvailableTickets(mockAvailableTickets);
+      setIsLoading(false);
+      
+      // Scroll to available tickets section after they're loaded
+      if (availableTicketsRef.current) {
+        setTimeout(() => {
+          availableTicketsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }, 500);
+  }, []);
+
   // Fetch user's tickets
   useEffect(() => {
     const fetchUserTickets = async () => {
@@ -83,70 +147,6 @@ const TradingPage = () => {
     
     fetchUserTickets();
   }, [location.state, fetchAvailableTicketsForTrade]);
-
-  // Fetch available tickets for trade
-  const fetchAvailableTicketsForTrade = useCallback((ticket, seatNumber) => {
-    setIsLoading(true);
-    
-    // In a real app, this would be an API call
-    /*
-    * MICROSERVICE INTEGRATION POINT:
-    * 
-    * In production, you would fetch from the trading microservice:
-    * const response = await fetch(`https://api-gateway.example.com/trading/available-tickets?category=${ticket.category}&eventTitle=${ticket.eventTitle}&seat=${seatNumber}`, {
-    *   headers: { Authorization: `Bearer ${token}` }
-    * });
-    * const data = await response.json();
-    */
-    
-    // For demo purposes, use mock data with a short delay
-    setTimeout(() => {
-      const mockAvailableTickets = [
-        {
-          id: 'TKT-2468-1357',
-          eventTitle: ticket.eventTitle,
-          eventDate: ticket.eventDate,
-          eventTime: ticket.eventTime,
-          location: ticket.location,
-          category: ticket.category,
-          section: 'B',
-          row: '3',
-          seats: ['5'],
-          price: ticket.price / ticket.seats.length, // Price per seat
-          ownerName: 'John Smith',
-          ownerRating: 4.8,
-          tradePreference: 'same-event',
-          eventImage: ticket.eventImage
-        },
-        {
-          id: 'TKT-1357-2468',
-          eventTitle: ticket.eventTitle,
-          eventDate: ticket.eventDate,
-          eventTime: ticket.eventTime,
-          location: ticket.location,
-          category: ticket.category,
-          section: 'A',
-          row: '5',
-          seats: ['20'],
-          price: ticket.price / ticket.seats.length, // Price per seat
-          ownerName: 'Emily Johnson',
-          ownerRating: 4.9,
-          tradePreference: 'any',
-          eventImage: ticket.eventImage
-        }
-      ];
-      
-      setAvailableTickets(mockAvailableTickets);
-      setIsLoading(false);
-      
-      // Scroll to available tickets section after they're loaded
-      if (availableTicketsRef.current) {
-        setTimeout(() => {
-          availableTicketsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
-    }, 500);
-  }, []);
 
   const handleTicketSelect = (ticket) => {
     setSelectedTicket(ticket);
