@@ -222,17 +222,100 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Error calling Trade Ticket Service: {str(e)}")
             return None
+    # Replace the existing trade_ticket function with this implementation
 
+    @app.route('/ticket/trade/request/<trade_request_id>', methods=['PUT'])
+    def trade_ticket_by_request_id(trade_request_id):
+        """
+        Process a ticket trade using the trade request ID
+        This finds both tickets associated with the trade request and swaps ownership
+        """
+        try:
+            # Find all tickets with this trade request ID
+            tickets_in_trade = Ticket.query.filter_by(tradeRequestID=trade_request_id).all()
+            
+            if not tickets_in_trade:
+                return jsonify({"error": "No tickets found with the provided trade request ID"}), 404
+                
+            if len(tickets_in_trade) != 2:
+                return jsonify({
+                    "error": f"Expected exactly 2 tickets for trade, found {len(tickets_in_trade)}. Trade request data may be inconsistent."
+                }), 400
+            
+            # Extract the two tickets
+            ticket1 = tickets_in_trade[0]
+            ticket2 = tickets_in_trade[1]
+            
+            # Get original user IDs
+            ticket1_id = ticket1.ticketID
+            ticket2_id = ticket2.ticketID
+            user1_id = ticket1.userID
+            user2_id = ticket2.userID
+            
+            logger.info(f"Starting trade between tickets: {ticket1_id} (user: {user1_id}) and {ticket2_id} (user: {user2_id})")
+            
+            # Additional validation to ensure we're not trading between same user
+            if user1_id == user2_id:
+                return jsonify({
+                    "error": "Cannot trade tickets between the same user"
+                }), 400
+            
+            # Make sure tickets are in a valid state to trade
+            if ticket1.status != "confirmed" or ticket2.status != "confirmed":
+                invalid_ticket = ticket1 if ticket1.status != "confirmed" else ticket2
+                return jsonify({
+                    "error": f"Cannot trade ticket with status: {invalid_ticket.status}. Both tickets must be confirmed."
+                }), 400
+            
+            # Swap ownership
+            ticket1.userID = user2_id
+            ticket2.userID = user1_id
+            
+            # Clear trade request IDs
+            ticket1.tradeRequestID = None
+            ticket2.tradeRequestID = None
+            
+            # Commit the changes in a single transaction
+            db.session.commit()
+            
+            logger.info(f"Trade completed successfully. Ticket {ticket1_id} now owned by {user2_id}, Ticket {ticket2_id} now owned by {user1_id}")
+            
+            return jsonify({
+                "message": "Trade completed successfully",
+                "tradeRequestID": trade_request_id,
+                "tickets": [
+                    {
+                        "ticketID": ticket1_id,
+                        "newUserID": user2_id
+                    },
+                    {
+                        "ticketID": ticket2_id,
+                        "newUserID": user1_id
+                    }
+                ]
+            }), 200
+                
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error in trade_ticket_by_request_id: {str(e)}")
+            return jsonify({"error": f"Failed to process trade request: {str(e)}"}), 500
     # Update ticket ownership (after Trade Acceptance)
+   # Replace the existing trade_ticket function with this implementation
+
     @app.route('/ticket/trade/<ticketID>', methods=['PUT'])
     def trade_ticket(ticketID):
+        """
+        Process a ticket trade by finding the partner ticket with the same trade request ID
+        and swapping ownership without calling the composite service
+        """
         try:
             data = request.json
-        
+            
             # Validate required field
             if 'tradeRequestID' not in data:
                 return jsonify({"error": "Missing required field: tradeRequestID"}), 400
 
+            # Get the current ticket
             ticket = Ticket.query.filter_by(ticketID=ticketID).first()
             
             if not ticket:
@@ -241,41 +324,109 @@ def register_routes(app):
             # Ensure ticket is currently in a trade process
             if not ticket.tradeRequestID:
                 return jsonify({"error": "This ticket is not currently involved in any trade"}), 400
+                
+            trade_request_id = data['tradeRequestID']
             
-            # Ensure that the ticket is actually involved in the trade request
-            if ticket.tradeRequestID != data["tradeRequestID"]:
-                return jsonify({"error": "Invalid trade request ID"}), 400
-
-            # Retrieve trade request details (Trade Ticket Service should ensure this is valid)
-            trade_request = get_trade_request_details(data["tradeRequestID"])
-            if not trade_request:
+            # Ensure the ticket has the correct trade request ID
+            if ticket.tradeRequestID != trade_request_id:
                 return jsonify({
-                    "error": "Trade Ticket Service is unavailable. Please try again later."
-                }), 503  # Service Unavailable
+                    "error": "Ticket has a different trade request ID than provided"
+                }), 400
             
-            if trade_request["status"] != "confirmed":
-                return jsonify({"error": "Trade request is not confirmed"}), 400
+            # Find the partner ticket directly in the database
+            # (No need to call external services)
+            partner_ticket = Ticket.query.filter(
+                Ticket.tradeRequestID == trade_request_id,
+                Ticket.ticketID != ticketID
+            ).first()
             
-            requested_user_id = trade_request.get("requestedUserID")
-            if not requested_user_id:
-                return jsonify({"error": "Trade request data is incomplete"}), 400
+            if not partner_ticket:
+                return jsonify({
+                    "error": "Could not find partner ticket with the same trade request ID"
+                }), 404
+                    
+            # Get original user IDs
+            ticket1_id = ticket.ticketID
+            ticket2_id = partner_ticket.ticketID
+            user1_id = ticket.userID
+            user2_id = partner_ticket.userID
             
-            # Prevent trading to the same user
-            if requested_user_id == ticket.userID:
-                return jsonify({"error": "You cannot trade a ticket to yourself"}), 400
-
-            # Update the userID to reflect the new owner
-            ticket.userID = trade_request["requestedUserID"]  # Transfer ownership
-            ticket.tradeRequestID = None  # Trade completed, remove association
+            logger.info(f"Starting trade between tickets: {ticket1_id} (user: {user1_id}) and {ticket2_id} (user: {user2_id})")
+            
+            # Additional validation to ensure we're not trading between same user
+            if user1_id == user2_id:
+                return jsonify({
+                    "error": "Cannot trade tickets between the same user"
+                }), 400
+            
+            # Make sure tickets are in a valid state to trade
+            if ticket.status != "confirmed" or partner_ticket.status != "confirmed":
+                invalid_ticket = ticket if ticket.status != "confirmed" else partner_ticket
+                return jsonify({
+                    "error": f"Cannot trade ticket with status: {invalid_ticket.status}. Both tickets must be confirmed."
+                }), 400
+            
+            # Swap ownership
+            ticket.userID = user2_id
+            partner_ticket.userID = user1_id
+            
+            # Clear trade request IDs
+            ticket.tradeRequestID = None
+            partner_ticket.tradeRequestID = None
+            
+            # Commit the changes in a single transaction
             db.session.commit()
-
+            
+            logger.info(f"Trade completed successfully. Ticket {ticket1_id} now owned by {user2_id}, Ticket {ticket2_id} now owned by {user1_id}")
+            
             return jsonify({
-                "ticketID": ticket.ticketID,
-                "newUserID": ticket.userID,
-                "status": "traded"
+                "message": "Trade completed successfully",
+                "ticket1": {
+                    "ticketID": ticket1_id,
+                    "newUserID": user2_id
+                },
+                "ticket2": {
+                    "ticketID": ticket2_id,
+                    "newUserID": user1_id
+                }
             }), 200
-
+                
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error updating ticket trade: {str(e)}")
-            return jsonify({"error": "Failed to update ticket owner"}), 500
+            logger.error(f"Error in trade_ticket: {str(e)}")
+            return jsonify({"error": f"Failed to process trade request: {str(e)}"}), 500
+
+    # Set Trade Request ID on a ticket
+    @app.route('/ticket/<ticket_id>/set-trade-id', methods=['POST'])
+    def set_trade_request_id(ticket_id):
+        """
+        Set the trade request ID on a ticket
+        This endpoint allows marking a ticket as part of a trade request
+        """
+        try:
+            data = request.json
+            
+            if 'tradeRequestID' not in data:
+                return jsonify({"error": "Missing required field: tradeRequestID"}), 400
+                
+            ticket = Ticket.query.filter_by(ticketID=ticket_id).first()
+            
+            if not ticket:
+                return jsonify({"error": "Ticket not found"}), 404
+                
+            # Set the trade request ID
+            ticket.tradeRequestID = data['tradeRequestID']
+            db.session.commit()
+            
+            logger.info(f"Successfully set trade request ID {data['tradeRequestID']} on ticket {ticket_id}")
+            
+            return jsonify({
+                "message": "Trade request ID set successfully",
+                "ticketID": ticket_id,
+                "tradeRequestID": data['tradeRequestID']
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error setting trade request ID: {str(e)}")
+            return jsonify({"error": "Failed to set trade request ID"}), 500
