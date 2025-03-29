@@ -1,6 +1,12 @@
 # IS213-TicketMaster
 
-List functions
+## Functions
+
+- Ticket purchasing
+- Seat allocation and payment
+- Ticket trading between users
+- Ticket refund & cancellation
+- Ticket trade eligibility check
 
 ## Setup
 
@@ -15,6 +21,34 @@ List functions
 - Keep commits clear and specific `git commit -m "commit-message"`
 - Push your branch to Github `git push origin your-branch-name`
 - Once done with task, send Pull Request (PR) to `main`. If no conflicts, merge into `main`. Else, resolve conflicts (please ask others if unsure)
+
+## Frontend Setup Instructions
+
+1️⃣ Navigate to frontend folder
+
+```bash
+cd frontend
+```
+
+2️⃣ Add the `.env` file (sent in our ESD chat)
+
+3️⃣ Install dependencies
+
+```bash
+npm install
+```
+
+4️⃣ Run the frontend
+
+```bash
+npm start
+```
+
+The app will be available at:
+
+```bash
+http://localhost:3000
+```
 
 ## Backend Setup Instructions
 
