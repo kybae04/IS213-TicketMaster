@@ -47,7 +47,7 @@ npm start
 The app will be available at:
 
 ```bash
-http://localhost:3000
+http://localhost:3001
 ```
 
 ## Backend Setup Instructions
