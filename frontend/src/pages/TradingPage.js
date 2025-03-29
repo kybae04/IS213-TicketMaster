@@ -82,7 +82,7 @@ const TradingPage = () => {
     };
     
     fetchUserTickets();
-  }, [location.state]);
+  }, [location.state, fetchAvailableTicketsForTrade]);
 
   // Fetch available tickets for trade
   const fetchAvailableTicketsForTrade = useCallback((ticket, seatNumber) => {
