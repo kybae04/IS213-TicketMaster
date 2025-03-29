@@ -207,7 +207,7 @@ const CheckoutPage = () => {
 
   return (
     <>
-      <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Checkout</h1>
+      <h1 className="text-3xl font-bold text-center mb-4 text-gray-900 dark:text-white mt-4">Checkout</h1>
       
       {/* Checkout Timer */}
       <div className="max-w-lg mx-auto mb-6">

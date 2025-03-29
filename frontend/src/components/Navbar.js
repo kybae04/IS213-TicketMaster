@@ -1,18 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  // Check if current page is login or register
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
-  // Show navigation links only if authenticated or on homepage
-  const shouldShowNavLinks = isAuthenticated || location.pathname === '/';
-
   const handleLogout = async () => {
     try {
       console.log("Attempting to log out...");
@@ -51,18 +45,8 @@ function Navbar() {
           </div>
           <div className="hidden md:flex flex-1 items-center justify-center">
             <div className="flex items-baseline space-x-4">
-              {/* Show Home link only if not on auth pages */}
-              {!isAuthPage && (
-                <Link
-                  to="/"
-                  className="text-gray-300 hover:text-white hover:bg-blue-600/10 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Home
-                </Link>
-              )}
-              
-              {/* Show navigation links only if authenticated or on homepage */}
-              {shouldShowNavLinks && isAuthenticated && (
+              {/* Show navigation links only if authenticated */}
+              {isAuthenticated && (
                 <>
                   <Link
                     to="/my-tickets"
@@ -162,19 +146,8 @@ function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden" id="mobile-menu">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-gray-800">
-            {/* Mobile: Show Home link only if not on auth pages */}
-            {!isAuthPage && (
-              <Link
-                to="/"
-                className="text-gray-300 hover:bg-blue-600/10 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Home
-              </Link>
-            )}
-            
             {/* Mobile: Show navigation links only if authenticated */}
-            {shouldShowNavLinks && isAuthenticated && (
+            {isAuthenticated && (
               <>
                 <Link
                   to="/my-tickets"

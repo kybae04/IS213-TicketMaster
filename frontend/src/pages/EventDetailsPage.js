@@ -177,18 +177,39 @@ const EventDetailsPage = () => {
               onClick={() => handleCategorySelect(category)}
             >
               <div className="flex flex-col items-center gap-1">
-                <div className="w-10 h-10 rounded-full border-2 border-blue-500 flex items-center justify-center">
-                  <div className={`w-6 h-6 rounded-full ${selectedCategory === category ? 'bg-blue-500' : 'bg-transparent'}`}></div>
+                <div className={`w-10 h-10 rounded-full border-2 ${
+                  category === 'VIP' ? 'border-purple-500' : 
+                  category === 'CAT1' ? 'border-red-500' : 
+                  category === 'CAT2' ? 'border-blue-500' : 
+                  'border-green-500'
+                } flex items-center justify-center`}>
+                  <div className={`w-6 h-6 rounded-full ${
+                    selectedCategory === category ? 
+                    (category === 'VIP' ? 'bg-purple-500' : 
+                    category === 'CAT1' ? 'bg-red-500' : 
+                    category === 'CAT2' ? 'bg-blue-500' : 
+                    'bg-green-500') : 'bg-transparent'
+                  }`}></div>
                 </div>
                 <div 
                   className={`p-4 w-40 cursor-pointer text-center ${
                   selectedCategory === category 
-                    ? 'bg-gray-700 border-2 border-blue-500' 
+                    ? `bg-gray-700 border-2 ${
+                        category === 'VIP' ? 'border-purple-500' : 
+                        category === 'CAT1' ? 'border-red-500' : 
+                        category === 'CAT2' ? 'border-blue-500' : 
+                        'border-green-500'
+                      }`
                     : 'bg-gray-800 border border-gray-700'
                   }`}
                 >
                   <div className="uppercase font-bold text-white text-center">{category}</div>
-                  <div className="text-blue-400 font-bold text-center">${event.price[category]}.00</div>
+                  <div className={`font-bold text-center ${
+                    category === 'VIP' ? 'text-purple-400' : 
+                    category === 'CAT1' ? 'text-red-400' : 
+                    category === 'CAT2' ? 'text-blue-400' : 
+                    'text-green-400'
+                  }`}>${event.price[category]}.00</div>
                 </div>
               </div>
             </div>
@@ -196,16 +217,16 @@ const EventDetailsPage = () => {
         </div>
         
         {/* Seat Map - Stadium Layout */}
-        <div className="w-full max-w-3xl mx-auto mb-16 bg-black py-12 px-8 rounded-lg">
-          <div className="relative w-full" style={{ height: "350px" }}>
+        <div className="w-full max-w-4xl mx-auto mb-16 bg-black py-16 px-12 rounded-2xl border-2 border-blue-500 shadow-glow">
+          <div className="relative w-full" style={{ height: "450px" }}>
             <svg
-              viewBox="0 0 600 350"
+              viewBox="0 0 600 400"
               className="w-full h-full"
               preserveAspectRatio="xMidYMid meet"
             >
               {/* Cat3 - outermost arc */}
               <path
-                d="M 50,350 A 250,250 0 0 1 550,350"
+                d="M 10,320 A 290,290 0 0 1 590,320"
                 fill={selectedCategory === 'CAT3' ? 'rgba(34, 197, 94, 0.8)' : 'transparent'}
                 stroke="#4338ca"
                 strokeWidth="2"
@@ -215,7 +236,7 @@ const EventDetailsPage = () => {
               
               {/* Cat2 */}
               <path
-                d="M 100,350 A 200,200 0 0 1 500,350"
+                d="M 80,320 A 220,220 0 0 1 520,320"
                 fill={selectedCategory === 'CAT2' ? 'rgba(37, 99, 235, 0.8)' : 'black'}
                 stroke="#4338ca"
                 strokeWidth="2"
@@ -225,7 +246,7 @@ const EventDetailsPage = () => {
               
               {/* Cat1 */}
               <path
-                d="M 150,350 A 150,150 0 0 1 450,350"
+                d="M 150,320 A 150,150 0 0 1 450,320"
                 fill={selectedCategory === 'CAT1' ? 'rgba(220, 38, 38, 0.8)' : 'black'}
                 stroke="#4338ca"
                 strokeWidth="2"
@@ -235,7 +256,7 @@ const EventDetailsPage = () => {
               
               {/* VIP - innermost arc before stage */}
               <path
-                d="M 200,350 A 100,100 0 0 1 400,350"
+                d="M 215,320 A 85,85 0 0 1 385,320"
                 fill={selectedCategory === 'VIP' ? 'rgba(147, 51, 234, 0.8)' : 'black'}
                 stroke="#4338ca"
                 strokeWidth="2"
@@ -245,18 +266,18 @@ const EventDetailsPage = () => {
               
               {/* Stage - Always black */}
               <path
-                d="M 250,350 A 50,50 0 0 1 350,350"
+                d="M 265,320 A 35,35 0 0 1 335,320"
                 fill="black"
                 stroke="#4338ca"
                 strokeWidth="2"
               />
               
               {/* Text labels */}
-              <text x="300" y="335" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="16">STAGE</text>
-              <text x="300" y="280" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="14">VIP</text>
-              <text x="300" y="230" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="14">CAT1</text>
-              <text x="300" y="180" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="14">CAT2</text>
-              <text x="300" y="130" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="14">CAT3</text>
+              <text x="300" y="312" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="14">STAGE</text>
+              <text x="300" y="265" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="12">VIP</text>
+              <text x="300" y="210" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="12">CAT1</text>
+              <text x="300" y="135" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="12">CAT2</text>
+              <text x="300" y="70" textAnchor="middle" fill="#a5b4fc" fontWeight="bold" fontSize="12">CAT3</text>
             </svg>
           </div>
         </div>
@@ -311,6 +332,13 @@ const EventDetailsPage = () => {
           </div>
         )}
       </div>
+
+      <style jsx="true">{`
+        .shadow-glow {
+          box-shadow: 0 0 15px rgba(59, 130, 246, 0.5),
+                      0 0 30px rgba(37, 99, 235, 0.3);
+        }
+      `}</style>
     </>
   );
 };
