@@ -97,6 +97,25 @@ def process_payment():
         "idempotencyKey": data['idempotency_key']
     }), 200
 
+@app.route('/payment/<transactionID>', methods=['GET'])
+def get_payment(transactionID):
+    """
+    Endpoint to retrieve a payment record by transaction ID.
+    """
+    payment_record = Payment.query.filter_by(transactionID=transactionID).first()
+    if not payment_record:
+        return jsonify({"error": "Payment record not found"}), 404
+
+    return jsonify({
+        "transactionID": payment_record.transactionID,
+        "stripeID": payment_record.stripeID,
+        "amount": payment_record.amount,
+        "currency": payment_record.currency,
+        "chargeType": payment_record.chargeType,
+        "status": payment_record.status,
+        "idempotencyKey": payment_record.idempotencyKey
+    }), 200
+
 @app.route('/refund', methods=['POST'])
 def process_refund():
     """
