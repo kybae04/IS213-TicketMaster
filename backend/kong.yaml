@@ -899,7 +899,7 @@ routes:
     id: fa926db8-80dc-4dfa-ae2a-1dfc8a8919a7
     strip_path: false
     paths:
-      - ~/ticket/verify/(?<ticket_id>[^/]+)$
+      - ~/verify-ticket/(?<ticket_id>[^/]+)$
     path_handling: v0
     https_redirect_status_code: 426
     name: verify-ticket

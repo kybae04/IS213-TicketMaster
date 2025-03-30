@@ -8,7 +8,7 @@ from atomic import TICKET_SERVICE_URL, EVENT_SERVICE_URL, SEAT_SERVICE_URL
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/ticket/verify/<ticket_id>", methods=["GET"])
+@app.route("/verify-ticket/<ticket_id>", methods=["GET"])
 def verify_ticket(ticket_id):
     """Check if a ticket is tradable based on multiple conditions."""
     
