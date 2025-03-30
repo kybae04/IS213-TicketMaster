@@ -80,7 +80,7 @@ def cancel_transaction(transaction_id):
 
     # Step 5: Release seat
     for ticket in tickets:
-        seat_id = "1b514f0f-c7a9-4693-8f45-8b7e4668d9b5" ###HARDCODED CHANGE LATER, currently only one ticket in transaction
+        seat_id = "db634fd3-57a8-4f3a-a53d-9243f8381345" ###HARDCODED CHANGE LATER, currently only one ticket in transaction, later on use code below
         # seat_id = ticket["seatID"]
         release_response = requests.put(f"{SEAT_SERVICE_URL}/release/{seat_id}")
         if release_response.status_code != 200:
@@ -88,10 +88,13 @@ def cancel_transaction(transaction_id):
 
     if refund_eligibility is True:
         # Step 6: Refund payment
-        payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/{transaction_id}")
+        # payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/{transaction_id}")
+        payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/txn-433849") ### HARDCODED TRANSACTIONID, CHANGE LATER to the code above
+
         if payment_response.status_code != 200:
             return jsonify({"error": "Failed to retrieve stripeID"}), 500
         stripe_id = payment_response.json().get("stripeID")
+        logging.debug("Stripe ID:", stripe_id)
     
         refund_data = {
             "stripeID": stripe_id,
@@ -100,7 +103,7 @@ def cancel_transaction(transaction_id):
 
         refund_response = requests.post(f"{PAYMENT_SERVICE_URL}/refund", json=refund_data)
 
-        if refund_response.status_code != 200:
+        if refund_response.status_code != 201:
             return jsonify({"error": "Failed to refund payment"}), 500
 
         refund_record = refund_response.json()
