@@ -169,7 +169,7 @@ def process_refund():
         "chargeType": "refund",  
         "status": refund_response.get('status', 'unknown'),
         "idempotencyKey": data['idempotency_key']
-    }), 200
+    }), 201
 
 if __name__ == '__main__':
     with app.app_context():
