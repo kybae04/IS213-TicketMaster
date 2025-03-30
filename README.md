@@ -76,7 +76,8 @@ STRIPE_SECRET_KEY=
 - Ensure this file is not committed to GitHub (it is listed in .gitignore).
 
 3️⃣ Build and run all backend services  
-Make sure Docker is running first.
+Make sure Docker is running first.  
+IMPORTANT: Ensure that the file `kong.yaml` is present inside in the `\backend` folder
 
 ```bash
 docker compose up --build
