@@ -30,16 +30,9 @@ def get_seat_availability(event_id):
     return jsonify({"available_seats": available_seats}), 200
 
 
-### Reserve a Seat (with Idempotency)
-@app.route("/reserve/<event_id>/<seat_id>/<idempotency_key>", methods=["POST"])
-def reserve_seat(event_id, seat_id, idempotency_key):
-    existing_key = supabase.table("idempotency_keys").select("*").eq("key", idempotency_key).execute()
-    
-    if existing_key.data:
-        return jsonify(existing_key.data[0]["response"]), 200  # Return stored response
-
-    
-        existing_key = supabase.table("idempotency_keys").select("*").eq("key", idempotency_key).execute()
+### Reserve a Seat
+@app.route("/reserve/<seat_id>", methods=["POST"])
+def reserve_seat(seat_id):
 
     response = supabase.table("seat_allocation").select("*").eq("seatid", seat_id).execute()
     
@@ -59,19 +52,14 @@ def reserve_seat(event_id, seat_id, idempotency_key):
         reservation_response = {
             "message": "Seat reserved successfully",
             "seatid": seat_id
-            }
-
-        supabase.table("idempotency_keys").insert({
-            "key": idempotency_key,
-            "response": reservation_response
-        }).execute()
+            }.execute()
 
 
         return jsonify(reservation_response), 200
     else:
         return jsonify({"error": "Reservation failed"}), 500
 
-# Confirm seat change status to unavailable
+# Confirm seat change status from reserved to confirmed
 @app.route("/confirm/<seat_id>", methods=["PUT"])
 def confirm_seat(seat_id):
     response = supabase.table("seat_allocation").select("*").eq("seatid", seat_id).execute()
@@ -86,7 +74,7 @@ def confirm_seat(seat_id):
 
 
     update_response = supabase.table("seat_allocation").update({
-        "status": "unavailable"
+        "status": "confirmed"
     }).eq("seatid", seat_id).execute()
     
     return jsonify({"message": "Seat confirmed"}), 200
@@ -102,8 +90,8 @@ def release_seat(seat_id):
 
     seat = response.data[0]
 
-    if seat["status"] not in ["unavailable", "reserved"]:
-        return jsonify({"error": "Seat is not unavailable"}), 409
+    if seat["status"] not in ["reserved","confirmed"]:
+        return jsonify({"error": "Seat is not reserved"}), 409
 
     update_response = supabase.table("seat_allocation").update({
         "status": "available"
