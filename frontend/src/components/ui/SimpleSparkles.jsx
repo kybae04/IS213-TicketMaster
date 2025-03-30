@@ -80,9 +80,14 @@ const SimpleSparkles = ({
         const angle = Math.random() * Math.PI * 2;
         const speedFactor = (Math.random() * 0.5 + 0.5) * speed;
         
+        // Ensure particles don't start exactly at the borders
+        const margin = maxSize * 1.5;
+        const xPos = margin + Math.random() * (canvas.clientWidth - margin * 2);
+        const yPos = margin + Math.random() * (canvas.clientHeight - margin * 2);
+        
         particles.push({
-          x: Math.random() * canvas.clientWidth,
-          y: Math.random() * canvas.clientHeight,
+          x: xPos,
+          y: yPos,
           size: Math.random() * (maxSize - minSize) + minSize,
           speedX: Math.cos(angle) * speedFactor,
           speedY: Math.sin(angle) * speedFactor,
@@ -95,7 +100,9 @@ const SimpleSparkles = ({
           acceleration: Math.random() * 0.008 + 0.002, // Reduced for smoother movement
           maxSpeed: speedFactor * 1.2, // Slightly reduced max speed
           // Add properties for optimization
-          connectionCheckFrame: i % 3 // Distribute connection checks across frames
+          connectionCheckFrame: i % 3, // Distribute connection checks across frames
+          // Add jitter timer to help unstick particles
+          jitterTimer: Math.floor(Math.random() * 120)
         });
       }
     };
@@ -154,20 +161,70 @@ const SimpleSparkles = ({
             p.speedX *= ratio;
             p.speedY *= ratio;
           }
+          
+          // Ensure minimum speed to prevent stalling
+          const minSpeed = 0.1;
+          if (Math.abs(p.speedX) < minSpeed && Math.abs(p.speedY) < minSpeed) {
+            // Give a slight push in a random direction
+            const pushAngle = Math.random() * Math.PI * 2;
+            p.speedX += Math.cos(pushAngle) * minSpeed * 2;
+            p.speedY += Math.sin(pushAngle) * minSpeed * 2;
+          }
         }
         
         // Update position with delta time scaling
         p.x += p.speedX * (delta / 16);
         p.y += p.speedY * (delta / 16);
         
-        // Bounce off edges with smoother transitions
-        if (p.x < 0 || p.x > canvas.clientWidth) {
-          p.speedX = -p.speedX;
-          p.x = p.x < 0 ? 0 : canvas.clientWidth;
+        // Boundary padding to avoid getting stuck
+        const padding = p.size * 1.5;
+        const effectiveWidth = canvas.clientWidth - padding;
+        const effectiveHeight = canvas.clientHeight - padding;
+        
+        // Bounce off edges with improved unsticking logic
+        if (p.x < padding) {
+          p.x = padding + (padding - p.x) * 0.5; // Push away from edge
+          p.speedX = Math.abs(p.speedX) * (1 + Math.random() * 0.2); // Always move right with slight randomness
+        } else if (p.x > effectiveWidth) {
+          p.x = effectiveWidth - (p.x - effectiveWidth) * 0.5; // Push away from edge
+          p.speedX = -Math.abs(p.speedX) * (1 + Math.random() * 0.2); // Always move left with slight randomness
         }
-        if (p.y < 0 || p.y > canvas.clientHeight) {
-          p.speedY = -p.speedY;
-          p.y = p.y < 0 ? 0 : canvas.clientHeight;
+        
+        if (p.y < padding) {
+          p.y = padding + (padding - p.y) * 0.5; // Push away from edge
+          p.speedY = Math.abs(p.speedY) * (1 + Math.random() * 0.2); // Always move down with slight randomness
+        } else if (p.y > effectiveHeight) {
+          p.y = effectiveHeight - (p.y - effectiveHeight) * 0.5; // Push away from edge
+          p.speedY = -Math.abs(p.speedY) * (1 + Math.random() * 0.2); // Always move up with slight randomness
+        }
+        
+        // Apply jitter to help unstick particles occasionally
+        p.jitterTimer--;
+        if (p.jitterTimer <= 0) {
+          // Reset timer
+          p.jitterTimer = 60 + Math.floor(Math.random() * 120);
+          
+          // Check if near edge
+          const isNearEdge = 
+            p.x < padding * 2 || 
+            p.x > canvas.clientWidth - padding * 2 ||
+            p.y < padding * 2 || 
+            p.y > canvas.clientHeight - padding * 2;
+            
+          if (isNearEdge) {
+            // Apply stronger push toward center
+            const centerX = canvas.clientWidth / 2;
+            const centerY = canvas.clientHeight / 2;
+            const towardCenterX = centerX - p.x;
+            const towardCenterY = centerY - p.y;
+            const length = Math.sqrt(towardCenterX * towardCenterX + towardCenterY * towardCenterY);
+            
+            if (length > 0) {
+              const jitterForce = 0.5 + Math.random() * 0.5;
+              p.speedX += (towardCenterX / length) * jitterForce;
+              p.speedY += (towardCenterY / length) * jitterForce;
+            }
+          }
         }
         
         // Distribute connection checks across frames
