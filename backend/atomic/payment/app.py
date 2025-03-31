@@ -7,8 +7,17 @@ from flask_sqlalchemy import SQLAlchemy
 # from flask_migrate import Migrate
 from config import Config
 from db import db
-from models import Payment
+from models import Payment, IdempotencyKey
 from services.stripe_service import create_charge, refund_charge
+import random
+from datetime import datetime
+
+# Generating transaction ID
+def generate_transaction_id():
+    while True:
+        new_id = f"txn-{random.randint(100000, 999999)}"
+        if not Payment.query.filter_by(transactionID=new_id).first():
+            return new_id
 
 # Configure logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -50,6 +59,9 @@ def process_payment():
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
+    # Generate transactionID
+    transaction_id = generate_transaction_id()
+
     # convert amount to cents
     amount_cents = int(data['amount'] * 100)
 
@@ -68,12 +80,22 @@ def process_payment():
     # Store the transaction in the database using the Payment model
     # logging.debug("Creating payment record")
     payment_record = Payment(
+        transactionID=transaction_id,
         stripeID=stripe_response['id'],
         amount=data['amount'],
         currency=data['currency'],
         chargeType="payment",
         status=stripe_response.get('status', 'unknown'),
-        idempotencyKey=data['idempotency_key']
+        # idempotencyKey=data['idempotency_key']
+    )
+
+    idempotency_key_record = IdempotencyKey(
+        key=data['idempotency_key'],
+        response={
+            "transactionID": transaction_id,
+            "message": "Payment processed successfully",
+        },
+        created_at=datetime.utcnow()
     )
 
     try:
@@ -83,19 +105,22 @@ def process_payment():
         db.session.flush()
         db.session.commit()
         # logging.debug("Payment record committed successfully")
+        db.session.add(idempotency_key_record)
+        db.session.commit()
     except Exception as e:
         # logging.error("Error during commit: %s", e)
         db.session.rollback()  # Rollback the session to avoid invalid state
         return jsonify({"error": str(e)}), 500
 
     return jsonify({
+        "transactionID": transaction_id,
         "stripeID": stripe_response['id'],
         "amount": data['amount'],
         "currency": data['currency'],
         "chargeType": "payment",
         "status": stripe_response.get('status', 'unknown'),
         "idempotencyKey": data['idempotency_key']
-    }), 200
+    }), 200 # not sure if want to change to 201, but might need to change in buy_ticket composite service also
 
 @app.route('/payment/<transactionID>', methods=['GET'])
 def get_payment(transactionID):
@@ -149,20 +174,37 @@ def process_refund():
     if "error" in refund_response:
         return jsonify(refund_response), 400
 
+    # Generate transactionID
+    transaction_id = generate_transaction_id()
+
     # Store the transaction in the database using the Payment model
     payment_record = Payment(
+        transactionID=transaction_id,
         stripeID=data['stripeID'],
         amount=original_payment.amount,
         currency=original_payment.currency,
         chargeType="refund",
         status=refund_response.get('status', 'unknown'),
-        idempotencyKey=data['idempotency_key']
+        # idempotencyKey=data['idempotency_key']
+    )
+
+    idempotency_key_record = IdempotencyKey(
+        key=data['idempotency_key'],
+        response={
+            "transactionID": transaction_id,
+            "message": "Refund processed successfully",
+        },
+        created_at=datetime.utcnow()
     )
 
     db.session.add(payment_record)
     db.session.commit()
 
+    db.session.add(idempotency_key_record)
+    db.session.commit()
+
     return jsonify({
+        "transactionID": transaction_id,
         "stripeID": data['stripeID'],
         "amount": original_payment.amount,
         "currency": original_payment.currency,
