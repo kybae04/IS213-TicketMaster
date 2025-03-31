@@ -1,23 +1,33 @@
 # models.py
 from db import db
-from sqlalchemy import Numeric
-import random
+from sqlalchemy import Numeric, Integer, String, Text, JSON, DateTime
+from datetime import datetime
+# import random
 
-def generate_transaction_id():
-    while True:
-        new_id = f"txn-{random.randint(100000, 999999)}"
-        if not Payment.query.filter_by(transactionID=new_id).first():
-            return new_id
+# def generate_transaction_id():
+#     while True:
+#         new_id = f"txn-{random.randint(100000, 999999)}"
+#         if not Payment.query.filter_by(transactionID=new_id).first():
+#             return new_id
 
 class Payment(db.Model):
     __tablename__ = 'transactions'
-    transactionID = db.Column(db.String(20), primary_key=True, default=generate_transaction_id)
+    # transactionID = db.Column(db.String(20), primary_key=True, default=generate_transaction_id)
+    transactionID = db.Column(db.String(20), primary_key=True)
     stripeID = db.Column(db.Text, nullable=False)
     amount = db.Column(Numeric(10, 2), nullable=False)
     currency = db.Column(db.String(10), nullable=False)
     chargeType = db.Column(db.String(255), nullable=False) # chargeType is payment/refund
     status = db.Column(db.String(50))
-    idempotencyKey = db.Column(db.Text, unique=True, nullable=False)
+    # idempotencyKey = db.Column(db.Text, unique=True, nullable=False)
+
+class IdempotencyKey(db.Model):
+    __tablename__ = 'idempotency_keys'
+
+    id = db.Column(Integer, primary_key=True, autoincrement=True)  # Auto incremented primary key
+    key = db.Column(Text, nullable=False, unique=True)  # Idempotency key UUID
+    response = db.Column(JSON, nullable=False)  # Stores the response in JSON format
+    created_at = db.Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def __repr__(self):
-        return f'<Payment {self.stripeID}>'
+        return f'<IdempotencyKey {self.key}>'

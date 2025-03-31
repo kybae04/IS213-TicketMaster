@@ -67,7 +67,7 @@ def cancel_transaction(transaction_id):
     ticket_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/transaction/{transaction_id}")
 
     if ticket_response.status_code != 200:
-        return jsonify({"error": "Failed to retrieve tickets"}), 500
+        return jsonify({"error": "Failed to retrieve tickets", "statuscode": ticket_response.status_code}), 500
     
     tickets = ticket_response.json()
 
@@ -84,7 +84,7 @@ def cancel_transaction(transaction_id):
         # seat_id = ticket["seatID"]
         release_response = requests.put(f"{SEAT_SERVICE_URL}/release/{seat_id}")
         if release_response.status_code != 200:
-            return jsonify({"error": "Failed to release seat"}), 500
+            return jsonify({"error": "Failed to release seat", "statuscode": release_response.status_code}), 500
 
     if refund_eligibility is True:
         # Step 6: Refund payment
@@ -104,7 +104,7 @@ def cancel_transaction(transaction_id):
         refund_response = requests.post(f"{PAYMENT_SERVICE_URL}/refund", json=refund_data)
 
         if refund_response.status_code != 201:
-            return jsonify({"error": "Failed to refund payment"}), 500
+            return jsonify({"error": "Failed to refund payment", "statuscode": refund_response.status_code}), 500
 
         refund_record = refund_response.json()
         amount_refunded = refund_record.get("amount")
