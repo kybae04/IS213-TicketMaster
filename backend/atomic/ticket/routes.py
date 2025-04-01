@@ -156,6 +156,18 @@ def register_routes(app):
             logger.error(f"Error retrieving tickets: {str(e)}")
             return jsonify({"error": "Failed to retrieve tickets"}), 500
 
+    # Get Tickets by User ID
+    @app.route('/tickets/user/<user_id>', methods=['GET'])
+    def get_tickets_by_user(user_id):
+        try:
+            tickets = Ticket.query.filter_by(userID=user_id).all()
+            if tickets == []:
+                return jsonify({"error": "User ID does not exist"}), 404
+            return jsonify([ticket.to_dict() for ticket in tickets]), 200
+        except Exception as e:
+            logger.error(f"Error retrieving tickets: {str(e)}")
+            return jsonify({"error": "Failed to retrieve tickets"}), 500
+
     # Void ticket
     @app.route('/ticket/void/<ticketID>', methods=['PUT'])
     def void_ticket(ticketID):
