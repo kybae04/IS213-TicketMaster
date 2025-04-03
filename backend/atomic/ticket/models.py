@@ -2,8 +2,7 @@ from db import db
 
 # Ticket Model
 class Ticket(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    ticketID = db.Column(db.String(36), unique=True, nullable=False)
+    ticketID = db.Column(db.String(36), primary_key=True)
     eventID = db.Column(db.String(36), nullable=False)
     seatID = db.Column(db.String(36), nullable=False)
     userID = db.Column(db.String(36), nullable=False)  # Current owner of ticket
