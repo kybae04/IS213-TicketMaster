@@ -396,7 +396,7 @@ routes:
     id: 4dfeb17b-668f-448a-ad38-be839d280951
     strip_path: false
     paths:
-      - ~/purchase/(?<event_id>[^/]+)/(?<seat_id>[^/]+)
+      - ~/purchase/(?<event_id>[^/]+)/(?<category>[^/]+)
     path_handling: v0
     https_redirect_status_code: 426
     name: purchase-ticket
@@ -708,7 +708,7 @@ routes:
     id: bfc80f55-a1c3-4bad-9e78-2c4ff15b0f87
     strip_path: false
     paths:
-      - ~/reserve/(?<event_id>[^/]+)/(?<seat_id>[^/]+)/(?<idempotency_key>[^/]+)
+      - ~/reserve/(?<seat_id>[^/]+)
     path_handling: v0
     https_redirect_status_code: 426
     name: reserve-seat
