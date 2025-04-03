@@ -19,22 +19,10 @@ def register_routes(app):
             data = request.json
         
             # Validate required fields
-            required_fields = ['eventID', 'seatID', 'userID', 'idempotencyKey']
+            required_fields = ['eventID', 'seatID', 'userID']
             for field in required_fields:
                 if field not in data:
                     return jsonify({"error": f"Missing required field: {field}"}), 400
-        
-            # Check if ticket with the same idempotencyKey already exists
-            existing_ticket = Ticket.query.filter_by(idempotencyKey=data['idempotencyKey']).first()
-
-            if existing_ticket:
-                return jsonify({
-                    "ticketID": existing_ticket.ticketID,
-                    "eventID": existing_ticket.eventID,
-                    "seatID": existing_ticket.seatID,
-                    "userID": existing_ticket.userID,
-                    "status": existing_ticket.status
-                }), 200  # Return existing ticket details
         
             # Create a new ticket
             ticket_id = str(uuid.uuid4())
@@ -43,7 +31,6 @@ def register_routes(app):
                 eventID=data['eventID'],
                 seatID=data['seatID'],
                 userID=data['userID'],
-                idempotencyKey=data['idempotencyKey'],
                 status="pending_payment"
             )
         
