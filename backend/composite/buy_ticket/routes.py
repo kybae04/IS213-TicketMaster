@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
 import uuid  # For generating idempotency keys
+import random # For randomly assigning seats
 
 app = Flask(__name__)
 
@@ -19,52 +20,68 @@ def view_availability(event_id):
         return(jsonify({"error":"No available seats"}))
     return jsonify({"available_seats": available_seats}),200
     
-@app.route("/purchase/<event_id>/<seat_id>", methods=["POST"])
-def purchase(event_id, seat_id):
-    user_id = "user_123"
+@app.route("/purchase/<event_id>/<category>", methods=["POST"])
+def purchase(event_id, category):
+    data = request.json
+    user_id = data.get("userID")
+    category = data.get("category")
+    quantity = data.get("quantity", 1) # Use 1 as default
     idempotency_key = str(uuid.uuid4())  # Generate unique key per request
+
+    if not category:
+        return jsonify({"error": "Missing seat category"}), 400
 
     # Step 1: Check Seat Availability
     seat_check_response = requests.get(f"{SEAT_SERVICE_URL}/availability/{event_id}")
-    
     if seat_check_response.status_code != 200:
         return(jsonify({"error":"No available seats"}))
     
     available_seats = seat_check_response.json().get("available_seats", [])
     
-    if not any(seat["seatid"] == seat_id for seat in available_seats):
-        return jsonify({"error": "Seat not available"}), 409
+    # 2. Filter by category
+    seats_in_category = [s for s in available_seats if s["cat_no"] == category]
     
-
+    # 3. Auto-pick seat(s)
+    if len(seats_in_category) < quantity:
+        return jsonify({"error": f"Only {len(seats_in_category)} seats available in {category}"}), 409
+    
+    selected_seats = random.sample(seats_in_category, quantity)
+    
     # Step 2: Reserve the Seat
-    reserve_response = requests.post(f"{SEAT_SERVICE_URL}/reserve/{event_id}/{seat_id}/{idempotency_key}")
+    ticket_ids = []
+    for seat in selected_seats:
+        seat_id = seat["seatid"]
     
-    if reserve_response.status_code == 404:
-        return jsonify({"error": "Seat not found"}), 500
+        reserve_response = requests.post(f"{SEAT_SERVICE_URL}/reserve/{seat_id}")
+        if reserve_response.status_code != 200:
+            return jsonify({"error": f"Failed to reserve seat {seat_id}"}), 500
+        
+        # Step 3: Create pending ticket
+        ticket_data = {'eventID':event_id, 'seatID':seat_id, 'userID':user_id}
+        pending_ticket_response = requests.post(f"{TICKET_SERVICE_URL}/ticket", json=ticket_data)
+        if pending_ticket_response.status_code not in [200,201]:
+            return(jsonify({"error":"Failed to create ticket."}), 402)
+        
+        ticket_id = pending_ticket_response.json().get('ticketID')
+        ticket_ids.append((ticket_id, seat_id))
+
+    # Step 4: Process Payment (shared for all)
+    category_prices = {
+        "vip": 399.00,
+        "cat_1": 299.00,
+        "cat_2": 199.00,
+        "cat_3": 99.00
+    }
+
+    price = category_prices.get(category.lower())
+    if price is None:
+        return jsonify({"error": f"Invalid category '{category}'"}), 400
     
-    elif reserve_response.status_code == 409:
-        return jsonify({"error": "Seat already reserved"}),409
-    
-    elif reserve_response.status_code != 200:
-        return jsonify({"error":"Reservation failed."}),500
-
-    #return jsonify({"message": "Ticket successfully reserved", "seat_id": seat_id}), 200
-    print(jsonify({"message": "Ticket successfully reserved", "seat_id": seat_id}), 200)
-    # Step 3: Create pending ticket
-
-    ticket_data = {'eventID':event_id, 'seatID':seat_id, 'userID':"user387", 'idempotencyKey':idempotency_key}
-    pending_ticket_response = requests.post(f"{TICKET_SERVICE_URL}/ticket", json=ticket_data)
-
-    ticket_id = pending_ticket_response.json().get('ticketID')
-    if pending_ticket_response.status_code not in [200,201]:
-        return(jsonify({"error":"Failed to create ticket."}), 402)
-
-    #print(jsonify({"message":"Ticket creation successful."}), 200)
-
-    # Step 4: Process Payment
+    # Convert to cents
+    total_amount = int(price * quantity * 100)  # cents
 
     #input retrieved from UI
-    payment_data = {"amount": 10000, "currency": "SGD", "source": "tok_visa", "idempotency_key":idempotency_key}
+    payment_data = {"amount": total_amount, "currency": "SGD", "source": "tok_visa", "idempotency_key":idempotency_key}
     payment_response = requests.post(f"{PAYMENT_SERVICE_URL}/payment", json=payment_data)
     #return(payment_response.json())
     if payment_response.status_code != 200:
@@ -74,30 +91,24 @@ def purchase(event_id, seat_id):
 
     # jsonify({"message": "Payment successful."}), 200
 
-    # Step 5: Change seat availability to unavailable
-    
-    confirm_seat_response = request.put(f"{SEAT_SERVICE_URL}/confirm/{seat_id}", json={'seat_id':seat_id})
-    if confirm_seat_response.status_code != 200:
-        return (confirm_seat_response.json().get("error")), 404
+    # Step 5: Confirm all seats + tickets
+    transaction_id = payment_response.json().get("transactionID")
+    transaction_data = {"transactionID": transaction_id}
 
-    # Step 6: Confirm Ticket
+    for ticket_id, seat_id in ticket_ids:
+        confirm_seat_response = requests.put(f"{SEAT_SERVICE_URL}/confirm/{seat_id}", json={'seat_id':seat_id})
+        if confirm_seat_response.status_code != 200:
+            return (confirm_seat_response.json().get("error")), 404
     
-    #payment service does not assign transactionID 
-    transaction_data = {"transactionID": payment_response.json().get("stripeID")}
+        confirm_ticket_response = requests.put(f"{TICKET_SERVICE_URL}/ticket/confirm/{ticket_id}", json=transaction_data)
+        if confirm_ticket_response.status_code != 200:
+            return jsonify({"error": f"Failed to confirm ticket {ticket_id}"}), 500
     
-    confirm_ticket_response = requests.put(f"{TICKET_SERVICE_URL}/ticket/confirm/{ticket_id}", json=transaction_data)
-    
-    if confirm_ticket_response.status_code == 200:
-        return jsonify({"message": "Ticket purchase successful", "ticket": confirm_ticket_response.json()}),200
-    elif confirm_ticket_response.status_code == 409:
-        return {"error": "Ticket already confirmed with a different transaction"}
-    elif confirm_ticket_response.status_code == 400:
-        return {"error": "Cannot confirm ticket due to invalid status"}
-    elif confirm_ticket_response.status_code == 404:
-        return {"error": "Ticket not found"}
-    else:
-        return {"error": "Failed to confirm ticket", "ticket_id":ticket_id}
-
+    return jsonify({
+        "message": f"Successfully purchased {quantity} ticket(s)",
+        "transactionID": transaction_id,
+        "tickets": [tid for tid, _ in ticket_ids]
+    }), 200
 
 @app.route("/timeout/<seat_id>/<ticket_id>", methods=["POST"])
 def timeout(ticket_id, seat_id):
