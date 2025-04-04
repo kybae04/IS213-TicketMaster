@@ -106,16 +106,25 @@ def purchase(event_id, category):
     data = request.json
     user_id = data.get("userID")
     quantity = data.get("quantity", 1)
-    ticket_ids = data.get("ticket_ids", [])
-    seat_ids = data.get("seat_ids", [])
     source = data.get("source")  # e.g. "tok_visa"
     idempotency_key = str(uuid.uuid4())
 
-    # Basic checks
     if not category:
         return jsonify({"error": "Missing seat category"}), 400
+    
+    # Fetch pending tickets
+    pending_url = f"{TICKET_SERVICE_URL}/tickets/pending/{event_id}/{category}/{user_id}"
+    pending_response = requests.get(pending_url)
+
+    if pending_response.status_code != 200:
+        return jsonify({"error": "No pending tickets found. Please select and reserve seats first."}), 400
+    
+    pending_data = pending_response.json()
+    ticket_ids = pending_data.get("ticket_ids", [])
+    seat_ids = pending_data.get("seat_ids", [])
+
     if len(ticket_ids) != len(seat_ids) or len(ticket_ids) != quantity:
-        return jsonify({"error": "Ticket/Seat mismatch or missing"}), 400
+        return jsonify({"error": "Pending ticket-seat mismatch or quantity mismatch"}), 400
 
     # Step 1: Calculate price
     category_prices = {
