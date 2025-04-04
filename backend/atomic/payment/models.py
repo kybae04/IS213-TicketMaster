@@ -24,8 +24,7 @@ class Payment(db.Model):
 class IdempotencyKey(db.Model):
     __tablename__ = 'idempotency_keys'
 
-    id = db.Column(Integer, primary_key=True, autoincrement=True)  # Auto incremented primary key
-    key = db.Column(Text, nullable=False, unique=True)  # Idempotency key UUID
+    key = db.Column(Text, primary_key=True)  # Now this is the primary key
     response = db.Column(JSON, nullable=False)  # Stores the response in JSON format
     created_at = db.Column(DateTime, default=datetime.utcnow, nullable=False)
 
