@@ -176,14 +176,27 @@ def purchase(event_id, category):
         "tickets": ticket_ids
     }), 200
 
-@app.route("/timeout", methods=["POST"])
-def timeout():
+@app.route("/timeout/<event_id>/<category>", methods=["POST"])
+def timeout(event_id, category):
     data = request.json
-    ticket_ids = data.get("ticket_ids", [])
-    seat_ids = data.get("seat_ids", [])
+    user_id = data.get("userID")
+
+    if not user_id or not category:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    # Fetch pending tickets from Ticket service
+    check_url = f"{TICKET_SERVICE_URL}/tickets/pending/{event_id}/{category}/{user_id}"
+    pending_response = requests.get(check_url)
+
+    if pending_response.status_code != 200:
+        return jsonify({"message": "No pending tickets to void"}), 200
+    
+    pending = pending_response.json()
+    ticket_ids = pending.get("ticket_ids", [])
+    seat_ids = pending.get("seat_ids", [])
 
     if not ticket_ids or not seat_ids or len(ticket_ids) != len(seat_ids):
-        return jsonify({"error": "Invalid or mismatched ticket/seat data"}), 400
+        return jsonify({"error": "Invalid or mismatched ticket-seat data"}), 400
     
     errors = []
 
@@ -200,8 +213,8 @@ def timeout():
     
     if errors:
         return jsonify({"message": "Timeout handled with some issues", "errors": errors}), 207
-    else:
-        return jsonify({"message": "All tickets and seats voided after timeout"}), 200
+    
+    return jsonify({"message": "All tickets and seats voided after timeout"}), 200
     
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8002, debug=True)
