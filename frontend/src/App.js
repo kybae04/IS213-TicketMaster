@@ -18,6 +18,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import RouteTransition from './components/RouteTransition';
 import { EventProvider } from './context/EventContext';
+import { MyTicketProvider } from './context/myTicketsContext';
 
 // Force dark mode
 document.documentElement.classList.add('dark');
@@ -27,9 +28,11 @@ function App() {
     <Router>
       <EventProvider>
         <AuthProvider>
-          <div className="App">
-            <AppRoutes />
-          </div>
+          <MyTicketProvider>
+            <div className="App">
+              <AppRoutes />
+            </div>
+          </MyTicketProvider>
         </AuthProvider>
       </EventProvider>
     </Router>
@@ -59,7 +62,7 @@ function AppRoutes() {
         <Route path="/register" element={withLayout(RegisterPage)} />
         <Route path="/checkout" element={withLayout(CheckoutPage)} />
         <Route path="/payment-confirmation" element={withLayout(PaymentConfirmationPage)} />
-        
+
         {/* Protected routes using Outlet pattern */}
         <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
           <Route path="/my-tickets" element={withLayout(MyTicketsPage)} />
@@ -68,7 +71,7 @@ function AppRoutes() {
           <Route path="/trade-success" element={withLayout(TradeSuccessPage)} />
           <Route path="/cancellation-success" element={withLayout(CancellationSuccessPage)} />
         </Route>
-        
+
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
