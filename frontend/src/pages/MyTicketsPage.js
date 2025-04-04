@@ -58,53 +58,62 @@ const MyTicketsPage = () => {
         // ]
         const mockTickets = [
           {
-            id: 'TKT-1234-5678',
+            ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
+            transactionID: 'txn-123456',
+            eventID: "1",
             eventTitle: 'Taylor Swift: The Eras Tour',
             eventDate: 'June 15, 2023',
             eventTime: '7:30 PM',
-            location: 'MetLife Stadium, New Jersey',
-            category: 'VIP',
-            section: 'A',
-            row: '1',
-            seats: ['12', '13'],
-            price: 450.00,
-            purchaseDate: '2023-04-10',
-            status: 'active',
-            qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-1234-5678',
+            numTickets: 2,
+            // location: 'MetLife Stadium, New Jersey',
+            // category: 'VIP',
+            // section: 'A',
+            // row: '1',
+            // seats: ['12', '13'],
+            // price: 450.00,
+            // purchaseDate: '2023-04-10',
+            status: 'confirmed',
+            // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-1234-5678',
             eventImage: 'https://source.unsplash.com/random/800x500/?concert',
           },
           {
-            id: 'TKT-8765-4321',
+            ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
+            transactionID: 'txn-123456',
+            eventID: "2",
             eventTitle: 'Coldplay: Music of the Spheres',
             eventDate: 'August 22, 2023',
             eventTime: '8:00 PM',
-            location: 'Wembley Stadium, London',
-            category: 'CAT1',
-            section: 'B',
-            row: '5',
-            seats: ['22'],
-            price: 180.00,
-            purchaseDate: '2023-05-15',
-            status: 'active',
-            qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-8765-4321',
+            numTickets: 2,
+            // location: 'Wembley Stadium, London',
+            // category: 'CAT1',
+            // section: 'B',
+            // row: '5',
+            // seats: ['22'],
+            // price: 180.00,
+            // purchaseDate: '2023-05-15',
+            status: 'confirmed',
+            // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-8765-4321',
             eventImage: 'https://source.unsplash.com/random/800x500/?music',
           },
           {
-            id: 'TKT-9876-5432',
+            ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
+            transactionID: 'txn-123456',
+            eventID: "3",
             eventTitle: 'NBA Finals 2023: Game 7',
             eventDate: 'June 18, 2023',
             eventTime: '9:00 PM',
-            location: 'Madison Square Garden, New York',
-            category: 'CAT2',
-            section: 'Lower Bowl',
-            row: '12',
-            seats: ['5', '6', '7'],
-            price: 350.00,
-            purchaseDate: '2023-05-02',
-            status: 'cancelled',
-            refundAmount: 350.00,
-            refundDate: '2023-05-10',
-            qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-9876-5432',
+            numTickets: 2,
+            // location: 'Madison Square Garden, New York',
+            // category: 'CAT2',
+            // section: 'Lower Bowl',
+            // row: '12',
+            // seats: ['5', '6', '7'],
+            // price: 350.00,
+            // purchaseDate: '2023-05-02',
+            status: 'voided',
+            // refundAmount: 350.00,
+            // refundDate: '2023-05-10',
+            // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-9876-5432',
             eventImage: 'https://source.unsplash.com/random/800x500/?basketball',
           }
         ];
@@ -126,26 +135,13 @@ const MyTicketsPage = () => {
 
   const confirmCancellation = async () => {
     try {
-      // In a real app, this would be an API call to cancel the ticket
-      /*
-      * MICROSERVICE INTEGRATION POINT:
-      * 
-      * In production, you would call the tickets microservice:
-      * const response = await fetch(`https://api-gateway.example.com/tickets/${ticketToCancel.id}/cancel`, {
-      *   method: 'POST',
-      *   headers: { 
-      *     'Content-Type': 'application/json',
-      *     Authorization: `Bearer ${token}` 
-      *   }
-      * });
-      */
 
       // For demo purposes, update the local state
       setTickets(tickets.map(ticket =>
         ticket.id === ticketToCancel.id
           ? {
             ...ticket,
-            status: 'cancelled',
+            status: 'voided',
             refundAmount: ticket.price,
             refundDate: new Date().toISOString().split('T')[0]
           }
@@ -198,14 +194,14 @@ const MyTicketsPage = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tickets.map((ticket) => (
-              <Card key={ticket.id} className={`overflow-hidden ${ticket.status === 'cancelled' ? 'opacity-70' : ''}`}>
+              <Card key={ticket.id} className={`overflow-hidden ${ticket.status === 'voided' ? 'opacity-70' : ''}`}>
                 <div className="relative h-48">
                   <img
                     src={ticket.eventImage}
                     alt={ticket.eventTitle}
                     className="w-full h-full object-cover"
                   />
-                  {ticket.status === 'cancelled' && (
+                  {ticket.status === 'voided' && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                       <span className="bg-red-600 text-white px-4 py-2 rounded-md font-bold uppercase">
                         Cancelled
@@ -217,25 +213,25 @@ const MyTicketsPage = () => {
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{ticket.eventTitle}</h3>
-                    <span className={`text-xs px-2 py-1 rounded font-medium ${ticket.category === 'VIP' ? 'bg-purple-600 text-white' :
+                    {/* <span className={`text-xs px-2 py-1 rounded font-medium ${ticket.category === 'VIP' ? 'bg-purple-600 text-white' :
                         ticket.category === 'CAT1' ? 'bg-red-600 text-white' :
                           ticket.category === 'CAT2' ? 'bg-blue-600 text-white' :
                             ticket.category === 'CAT3' ? 'bg-green-600 text-white' :
                               'bg-gray-600 text-white'
                       }`}>
                       {ticket.category}
-                    </span>
+                    </span> */}
                   </div>
 
                   <p className="text-gray-600 dark:text-gray-300 text-sm mb-1">
                     {ticket.eventDate} at {ticket.eventTime}
                   </p>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
+                  {/* <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
                     {ticket.location}
-                  </p>
+                  </p> */}
 
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
-                    <div className="flex justify-between mb-1">
+                    {/* <div className="flex justify-between mb-1">
                       <span className="text-gray-500 dark:text-gray-400 text-sm">Section:</span>
                       <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.section}</span>
                     </div>
@@ -252,45 +248,54 @@ const MyTicketsPage = () => {
                     <div className="flex justify-between mb-1">
                       <span className="text-gray-500 dark:text-gray-400 text-sm">Ticket ID:</span>
                       <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.id}</span>
+                    </div> */}
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">Number of Tickets:</span>
+                      <span className="text-gray-900 dark:text-white text-sm font-medium">2</span> {/* CHANGE LATER, STATIC NOW */}
                     </div>
                   </div>
 
-                  {ticket.status === 'cancelled' ? (
-                    <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded mb-3">
-                      <p className="text-red-700 dark:text-red-400 text-sm font-medium">Cancelled on {ticket.refundDate}</p>
-                      <p className="text-red-700 dark:text-red-400 text-sm">Refund: ${ticket.refundAmount.toFixed(2)}</p>
+                  {ticket.status === 'voided' ? (
+                    <div>
+                      <div className="flex justify-center mb-3"></div>
+                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded mb-3">
+                        <p className="text-center text-red-700 dark:text-red-400 text-lg font-bold">Refunded</p>
+                        {/* <p className="text-red-700 dark:text-red-400 text-sm font-medium">Cancelled on {ticket.refundDate}</p>
+                      <p className="text-red-700 dark:text-red-400 text-sm">Refund: $100</p>  */}
+                        {/* HARDCODED, can choose to either show or dont show this, if show then need to create new route to get refund amount by transactionID in payment service*/}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex justify-center mb-3">
-                      <img
+                      {/* <img
                         // src={ticket.qrCode} 
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ticket.ticketID}`}
                         alt="Ticket QR Code"
                         className="h-32 w-32"
-                      />
+                      /> */}
                     </div>
                   )}
 
                   <div className="flex gap-2">
-                    {ticket.status === 'active' && (
+                    {ticket.status === 'confirmed' && (
                       <>
-                        <Button
+                        {/* <Button
                           className="flex-1 font-bold"
                           variant="primary"
                           onClick={() => navigate('/trading', { state: { ticket } })}
                         >
                           Trade
-                        </Button>
+                        </Button> */}
                         <Button
                           className="flex-1 font-bold"
-                          variant="outline"
+                          variant="default"
                           onClick={() => handleCancelClick(ticket)}
                         >
                           Cancel
                         </Button>
                       </>
                     )}
-                    {ticket.status === 'cancelled' && (
+                    {/* {ticket.status === 'voided' && (
                       <Button
                         className="flex-1"
                         variant="default"
@@ -298,7 +303,7 @@ const MyTicketsPage = () => {
                       >
                         Refunded
                       </Button>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </Card>
