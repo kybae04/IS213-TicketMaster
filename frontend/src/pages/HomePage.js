@@ -19,21 +19,44 @@ function HomePage() {
   
   // Fetch events when component mounts
   useEffect(() => {
+    console.log('HomePage: Fetching events...');
     fetchEvents();
   }, [fetchEvents]); // fetchEvents is now stabilized with useCallback
 
+  // Debug: Log events when they change
+  useEffect(() => {
+    console.log('HomePage: Events updated:', events);
+    console.log('HomePage: Events type:', typeof events);
+    console.log('HomePage: Is Array?', Array.isArray(events));
+    if (Array.isArray(events)) {
+      console.log('HomePage: Events length:', events.length);
+      if (events.length > 0) {
+        console.log('HomePage: First event:', events[0]);
+      }
+    }
+  }, [events]);
+
   // Format price for display
   const formatPrice = (price) => {
+    if (!price) return 'From $99';
+    
     if (typeof price === 'object') {
       // Return the lowest price if price is an object with multiple tiers
-      const prices = Object.values(price);
-      return `$${Math.min(...prices)}`;
+      const prices = Object.values(price).filter(p => typeof p === 'number' && !isNaN(p));
+      if (prices.length === 0) return 'From $99';
+      return `From $${Math.min(...prices)}`;
     }
-    return price; // If price is already formatted
+    
+    if (typeof price === 'number' && !isNaN(price)) {
+      return `$${price}`;
+    }
+    
+    return 'From $99'; // Default fallback
   };
   
   // Handle loading state
   if (loading) {
+    console.log('HomePage: Loading state is true');
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
@@ -43,6 +66,7 @@ function HomePage() {
   
   // Handle error state
   if (error) {
+    console.log('HomePage: Error state:', error);
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center">
         <div className="text-red-500 text-xl mb-4">Error loading events</div>
@@ -53,9 +77,22 @@ function HomePage() {
   
   // Make sure events is always an array to prevent mapping errors
   const eventsArray = Array.isArray(events) ? events : [];
+  console.log('HomePage: Events array after check:', eventsArray);
+  console.log('HomePage: Events array length:', eventsArray.length);
   
   const renderEventCard = (event) => {
-    if (!event || !event.id) return null;
+    console.log('HomePage: Rendering event card for:', event);
+    // Skip rendering if event is missing
+    if (!event) {
+      console.log('HomePage: Skipping null event');
+      return null;
+    }
+    
+    // Skip rendering if id is missing (essential for routing)
+    if (!event.id && event.id !== 0) {
+      console.log('HomePage: Event missing id:', event);
+      return null;
+    }
     
     return (
       <CarouselItem key={event.id} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
@@ -63,19 +100,12 @@ function HomePage() {
           <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-200">
             <div className="relative w-full h-48 overflow-hidden">
               <img
-                // Use a default image or placeholder if event.image is not available
-                src={event.image || `https://picsum.photos/seed/${event.id}/400/300`}
+                src={event.image}
                 alt={event.title}
                 className="w-full h-full object-cover"
               />
               <Badge
-                className={`absolute top-3 right-3 font-medium ${
-                  event.category === 'Sports' ? 'bg-blue-600 text-white' :
-                  event.category === 'Concert' ? 'bg-purple-600 text-white' :
-                  event.category === 'Theater' ? 'bg-red-600 text-white' :
-                  event.category === 'Festival' ? 'bg-green-600 text-white' :
-                  'bg-gray-600 text-white'
-                }`}
+                className="absolute top-3 right-3 font-medium bg-purple-600 text-white"
               >
                 {event.category}
               </Badge>
@@ -98,7 +128,7 @@ function HomePage() {
                   <rect width="18" height="18" x="3" y="4" rx="2" />
                   <path d="M3 10h18" />
                 </svg>
-                {event.date} at {event.time}
+                {event.date} {event.time && `at ${event.time}`}
               </div>
             </div>
             <div className="p-4 pt-0 flex justify-between items-center">

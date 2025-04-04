@@ -1,21 +1,40 @@
 import axios from 'axios';
 
-// In development with the proxy, we use relative URLs
-// In production, we use the full API_URL
+// Detect development vs production environment
 const isProduction = process.env.NODE_ENV === 'production';
-const API_URL = isProduction ? (process.env.REACT_APP_API_GATEWAY_URL || 'http://localhost:8000') : '';
+
+// Use the URL that works directly in the browser
+const API_URL = 'http://localhost:8000';
+
+// We'll try both formats - with and without the Kong path prefix
+const SHOULD_USE_KONG = false; // Set to false since direct calls to /events/ work
+const API_PATH_PREFIX = SHOULD_USE_KONG ? '/ESDProject/rest/' : ''; 
+
+// Debug log
+console.log('API client initialized with URL:', API_URL, 
+  SHOULD_USE_KONG ? '(using Kong Gateway)' : '(using direct endpoint)');
 
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  withCredentials: false // Disable sending cookies to avoid CORS preflight issues
 });
 
 // Add request interceptor for auth tokens if needed
 apiClient.interceptors.request.use(
   config => {
+    // Only add Kong prefix if we're using Kong
+    if (SHOULD_USE_KONG && config.url && !config.url.startsWith(API_PATH_PREFIX)) {
+      config.url = API_PATH_PREFIX + config.url.replace(/^\/+/, '');
+    }
+    
+    // Log every request for debugging
+    console.log(`Making API request to: ${config.baseURL}${config.url}`);
+    
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -27,10 +46,17 @@ apiClient.interceptors.request.use(
 
 // Add response interceptor for error handling
 apiClient.interceptors.response.use(
-  response => response,
+  response => {
+    console.log(`API response from ${response.config.url}:`, response.status);
+    return response;
+  },
   error => {
     // Handle errors (e.g., 401 unauthorized, etc.)
-    console.error('API error:', error);
+    console.error('API error:', error.message);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
     return Promise.reject(error);
   }
 );
