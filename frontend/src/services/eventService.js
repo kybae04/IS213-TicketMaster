@@ -1,19 +1,161 @@
 import apiClient from './api';
 
+// Cache for events to prevent unnecessary API calls
+let cachedEvents = null;
+
+// Map of artist names to their image filenames
+const artistImageMap = {
+  'Benjamin Kheng': 'benkheng.jpg',
+  'Bruno Mars': 'brunomars.jpg',
+  'Carly Rae Jepsen': 'carly.jpg',
+  'Lady Gaga': 'ladygaga.jpg',
+  'Lauv': 'lauv.png',
+  'Taylor Swift': 'taylorswift.webp',
+  'Yoasobi': 'yoasobi.jpg'
+};
+
+// Default image in case an artist isn't found in the map
+const DEFAULT_IMAGE = 'taylorswift.webp';
+
+// Use the endpoint URL that works directly in the browser
+const EVENTS_API_URL = '/events/';  // This is the URL that works in your browser
+
 const eventService = {
+  // Expose the cached events
+  get cachedEvents() {
+    return cachedEvents;
+  },
+
   /**
-   * Fetches all events from the OutSystems event microservice
+   * Check the raw API response directly (for debugging)
+   */
+  checkRawApiResponse: async () => {
+    try {
+      console.log('Directly checking raw API response...');
+      const response = await apiClient.get(EVENTS_API_URL);
+      console.log('Raw API content:', response.data);
+      
+      if (response.data && response.data.Events) {
+        console.log('Events array sample:', response.data.Events.slice(0, 2));
+        return {
+          success: true,
+          message: 'API appears to be working correctly',
+          sampleData: response.data.Events.slice(0, 2)
+        };
+      } else {
+        return {
+          success: false,
+          message: 'API response does not contain Events array',
+          rawResponse: response.data
+        };
+      }
+    } catch (error) {
+      console.error('Error checking API:', error);
+      return {
+        success: false,
+        message: error.message,
+        error: error
+      };
+    }
+  },
+
+  /**
+   * Fetches all events from the event microservice
    * @returns {Promise<Array>} Array of event objects
    */
   getAllEvents: async () => {
+    // Return cached events if available
+    if (cachedEvents) {
+      console.log('Returning cached events:', cachedEvents.length);
+      return cachedEvents;
+    }
+
     try {
-      // If your OutSystems endpoint has a different path structure,
-      // adjust the URL path accordingly
-      const response = await apiClient.get('/events');
-      return response.data;
+      const fullUrl = `${apiClient.defaults.baseURL}${EVENTS_API_URL}`;
+      console.log(`Fetching events from API at ${fullUrl}...`);
+      
+      const response = await apiClient.get(EVENTS_API_URL);
+      console.log('API Response status:', response.status);
+      console.log('API Response data:', response.data);
+      
+      // Extract events from the response - specifically handling the format:
+      // { "Result": { "Success": true, "ErrorMessage": "" }, "Events": [...] }
+      let eventsData = [];
+      
+      if (response.data && response.data.Events && Array.isArray(response.data.Events)) {
+        // This is the exact format from the browser output
+        eventsData = response.data.Events;
+        console.log('Found events in response.data.Events with', eventsData.length, 'items');
+      } 
+      else if (Array.isArray(response.data)) {
+        // Direct array in case the API response format changes
+        eventsData = response.data;
+        console.log('Response is a direct array with', eventsData.length, 'items');
+      }
+      else {
+        // Try to find any arrays in the response
+        for (const key in response.data) {
+          if (Array.isArray(response.data[key])) {
+            eventsData = response.data[key];
+            console.log(`Found events array in response.data.${key} with`, eventsData.length, 'items');
+            break;
+          }
+        }
+      }
+      
+      if (eventsData.length > 0) {
+        console.log('First event in response:', eventsData[0]);
+        
+        // Transform the event data to match expected format in the frontend
+        const transformedEvents = eventsData.map((event) => {
+          console.log('Processing raw event:', event);
+          
+          // Get the correct image for this artist
+          const artistName = event.Artist;
+          const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
+          const imagePath = `/events/${imageFilename}`;
+          
+          // Create a properly formatted event object with exact values from API
+          const transformedEvent = {
+            id: parseInt(event.EventId, 10),
+            title: event.Artist,
+            date: event.EventDate,
+            time: event.EventTime ? event.EventTime.substring(0, 5) : '',
+            location: 'Stadium SG', // Only use this as fallback since API doesn't provide venue
+            image: imagePath,
+            description: `Join us for an unforgettable concert featuring ${event.Artist}!`,
+            category: 'Concert',
+            price: {
+              VIP: 399,
+              CAT1: 299,
+              CAT2: 199,
+              CAT3: 99
+            },
+            availableSeats: [
+              { area: "VIP", quantity: 20 },
+              { area: "CAT1", quantity: 50 },
+              { area: "CAT2", quantity: 100 },
+              { area: "CAT3", quantity: 200 }
+            ],
+            // Keep original data for reference
+            EventId: parseInt(event.EventId, 10)
+          };
+          
+          console.log(`Transformed event with artist-specific image:`, transformedEvent);
+          return transformedEvent;
+        });
+        
+        console.log('All transformed events:', transformedEvents.length);
+        cachedEvents = transformedEvents;
+        return transformedEvents;
+      }
+      
+      console.error('API returned an empty events array or events not found in the response');
+      return [];
     } catch (error) {
       console.error('Error fetching events:', error);
-      throw error;
+      console.log('Returning empty events array');
+      return [];
     }
   },
   
@@ -23,13 +165,107 @@ const eventService = {
    * @returns {Promise<Object>} Event object
    */
   getEventById: async (eventId) => {
+    // Try to get from cached events first
+    if (cachedEvents) {
+      const cachedEvent = cachedEvents.find(
+        event => (event.id === Number(eventId) || event.EventId === Number(eventId))
+      );
+      if (cachedEvent) return cachedEvent;
+    }
+
     try {
-      const response = await apiClient.get(`/events/${eventId}`);
-      return response.data;
+      console.log(`Fetching event ${eventId} from API...`);
+      // Get the event from the API using the correct route
+      const response = await apiClient.get(`${EVENTS_API_URL}${eventId}`);
+      console.log(`API Response for event ${eventId}:`, response.data);
+      
+      // Extract event from the response
+      let eventData = null;
+      
+      // Handle different possible response formats
+      if (response.data && response.data.Event) {
+        eventData = response.data.Event;
+      } 
+      else if (response.data && response.data.EventId) {
+        // Direct event object with EventId field
+        eventData = response.data;
+      }
+      else if (response.data && response.data.Result && response.data.Result.Success) {
+        // Try to find the event data in the response object
+        for (const key in response.data) {
+          if (key !== 'Result' && response.data[key] && typeof response.data[key] === 'object') {
+            eventData = response.data[key];
+            break;
+          }
+        }
+      }
+      else {
+        // Default fallback
+        eventData = response.data;
+      }
+      
+      if (eventData) {
+        // Get the correct image based on artist name
+        const artistName = eventData.Artist;
+        const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
+        const imagePath = `/events/${imageFilename}`;
+        
+        // Transform the event data to match frontend expectations
+        const transformedEvent = {
+          id: parseInt(eventData.EventId, 10) || parseInt(eventId, 10) || 1,
+          title: eventData.Artist,
+          date: eventData.EventDate,
+          time: eventData.EventTime ? eventData.EventTime.substring(0, 5) : '',
+          location: 'Stadium SG',
+          image: imagePath,
+          description: `Join us for an unforgettable concert featuring ${eventData.Artist}!`,
+          category: 'Concert',
+          price: {
+            VIP: 399,
+            CAT1: 299,
+            CAT2: 199,
+            CAT3: 99
+          },
+          availableSeats: [
+            { area: "VIP", quantity: 20 },
+            { area: "CAT1", quantity: 50 },
+            { area: "CAT2", quantity: 100 },
+            { area: "CAT3", quantity: 200 }
+          ],
+          // Keep original EventId field as well
+          EventId: parseInt(eventData.EventId, 10) || parseInt(eventId, 10) || 1
+        };
+        
+        console.log('Transformed single event:', transformedEvent);
+        return transformedEvent;
+      }
+      
+      throw new Error(`Event with ID ${eventId} not found in API response`);
     } catch (error) {
       console.error(`Error fetching event with ID ${eventId}:`, error);
-      throw error;
+      
+      // If we already fetched all events, try to find it there as a fallback
+      if (!cachedEvents) {
+        await eventService.getAllEvents();
+        
+        if (cachedEvents) {
+          const cachedEvent = cachedEvents.find(
+            event => (event.id === Number(eventId) || event.EventId === Number(eventId))
+          );
+          if (cachedEvent) return cachedEvent;
+        }
+      }
+      
+      throw new Error(`Event with ID ${eventId} not found`);
     }
+  },
+  
+  /**
+   * Clears the event cache
+   */
+  clearCache: () => {
+    cachedEvents = null;
+    console.log('Event cache cleared');
   }
 };
 

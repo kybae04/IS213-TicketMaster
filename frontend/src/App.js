@@ -19,9 +19,13 @@ import { AuthProvider } from './context/AuthContext';
 import RouteTransition from './components/RouteTransition';
 import { EventProvider } from './context/EventContext';
 import { MyTicketProvider } from './context/myTicketsContext';
+import ApiTester from './components/ApiTester';
 
 // Force dark mode
 document.documentElement.classList.add('dark');
+
+// Development environment flag
+const isDev = process.env.NODE_ENV === 'development';
 
 function App() {
   return (
@@ -31,6 +35,7 @@ function App() {
           <MyTicketProvider>
             <div className="App">
               <AppRoutes />
+              {isDev && <ApiTester />}
             </div>
           </MyTicketProvider>
         </AuthProvider>
