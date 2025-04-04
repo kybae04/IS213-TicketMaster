@@ -273,10 +273,6 @@ const CheckoutPage = () => {
               <span className="text-blue-400 font-bold">Total:</span>
               <span className="text-blue-400 font-bold">${orderData.total.toFixed(2)}</span>
             </div>
-            
-            <p className="text-xs text-gray-400 mt-4">
-              * All purchases are final and non-refundable unless the event is cancelled.
-            </p>
           </Card>
         </div>
         

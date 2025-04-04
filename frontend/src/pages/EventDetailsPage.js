@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getEventById } from '../utils/mockEventData';
+import eventService from '../services/eventService';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 
@@ -13,14 +13,38 @@ const EventDetailsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [seatQuantity, setSeatQuantity] = useState(1);
   
+  // Temporary placeholder availableSeats until inventory microservice is integrated
+  const placeholderAvailableSeats = [
+    { area: "VIP", quantity: 20 },
+    { area: "CAT1", quantity: 50 },
+    { area: "CAT2", quantity: 100 },
+    { area: "CAT3", quantity: 200 }
+  ];
+  
   // Load event data
   useEffect(() => {
-    const fetchEvent = () => {
+    const fetchEvent = async () => {
       try {
-        const eventData = getEventById(id);
+        console.log(`Fetching event with ID: ${id}`);
+        const eventData = await eventService.getEventById(id);
+        console.log('Fetched event data:', eventData);
+        
+        // Log the raw category data from API if it exists
+        if (eventData.rawCategoryData) {
+          console.log('Raw category data from API:', eventData.rawCategoryData);
+          console.log('Prices from API:', eventData.price);
+        } else {
+          console.warn('No raw category data found in event - using default pricing');
+        }
+        
         if (!eventData) {
           throw new Error('Event not found');
         }
+        
+        // Add placeholder availableSeats data to the event object
+        // This will be replaced with real data from inventory microservice
+        eventData.availableSeats = placeholderAvailableSeats;
+        
         setEvent(eventData);
       } catch (error) {
         console.error('Error fetching event:', error);
@@ -37,6 +61,7 @@ const EventDetailsPage = () => {
     setSelectedCategory(category);
     
     // Generate default seat selection for 1 ticket
+    // Note: In a real implementation, this would check availability from inventory microservice
     const categoryData = event.availableSeats.find(area => area.area === category);
     if (categoryData && categoryData.quantity > 0) {
       const newSelectedSeats = [`${category}-1`];
@@ -113,8 +138,10 @@ const EventDetailsPage = () => {
   const maxAvailableSeats = selectedCategory ? 
     Math.min(8, event.availableSeats.find(area => area.area === selectedCategory)?.quantity || 0) : 0;
   
-  // Define categories for display - using the correct categories from mock data
-  const categories = ['VIP', 'CAT1', 'CAT2', 'CAT3'];
+  // Define categories for display - using the categories from the API data if available
+  const categories = event.rawCategoryData 
+    ? ['VIP', 'CAT1', 'CAT2', 'CAT3'] // Use our standard category names for display
+    : ['VIP', 'CAT1', 'CAT2', 'CAT3']; // Fallback to standard categories
   
   return (
     <>

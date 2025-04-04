@@ -115,6 +115,15 @@ const eventService = {
           const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
           const imagePath = `/events/${imageFilename}`;
           
+          // Note: For the events list, we use placeholder pricing
+          // The actual detailed pricing will be fetched when viewing a specific event
+          const placeholderPrices = {
+            VIP: 399,
+            CAT1: 299,
+            CAT2: 199,
+            CAT3: 99
+          };
+          
           // Create a properly formatted event object with exact values from API
           const transformedEvent = {
             id: parseInt(event.EventId, 10),
@@ -125,18 +134,10 @@ const eventService = {
             image: imagePath,
             description: `Join us for an unforgettable concert featuring ${event.Artist}!`,
             category: 'Concert',
-            price: {
-              VIP: 399,
-              CAT1: 299,
-              CAT2: 199,
-              CAT3: 99
-            },
-            availableSeats: [
-              { area: "VIP", quantity: 20 },
-              { area: "CAT1", quantity: 50 },
-              { area: "CAT2", quantity: 100 },
-              { area: "CAT3", quantity: 200 }
-            ],
+            // Use placeholder prices for list view - detailed prices are fetched on event details page
+            price: placeholderPrices,
+            // Note: Available seats will be fetched from a separate inventory microservice
+            // This is a placeholder until the microservice integration is complete
             // Keep original data for reference
             EventId: parseInt(event.EventId, 10)
           };
@@ -181,20 +182,26 @@ const eventService = {
       
       // Extract event from the response
       let eventData = null;
+      let categoryData = [];
       
       // Handle different possible response formats
-      if (response.data && response.data.Event) {
-        eventData = response.data.Event;
+      if (response.data && response.data.EventResponse) {
+        eventData = response.data.EventResponse;
+        categoryData = response.data.EventResponse.Category || [];
       } 
       else if (response.data && response.data.EventId) {
         // Direct event object with EventId field
         eventData = response.data;
+        categoryData = response.data.Category || [];
       }
       else if (response.data && response.data.Result && response.data.Result.Success) {
         // Try to find the event data in the response object
         for (const key in response.data) {
           if (key !== 'Result' && response.data[key] && typeof response.data[key] === 'object') {
             eventData = response.data[key];
+            if (eventData.Category) {
+              categoryData = eventData.Category;
+            }
             break;
           }
         }
@@ -202,6 +209,9 @@ const eventService = {
       else {
         // Default fallback
         eventData = response.data;
+        if (eventData.Category) {
+          categoryData = eventData.Category;
+        }
       }
       
       if (eventData) {
@@ -209,6 +219,37 @@ const eventService = {
         const artistName = eventData.Artist;
         const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
         const imagePath = `/events/${imageFilename}`;
+        
+        // Process category and price data from API
+        const prices = {};
+        
+        // Map the categories from API to our frontend category structure
+        if (categoryData && categoryData.length > 0) {
+          categoryData.forEach(category => {
+            // Convert API's category format (cat_1, cat_2, cat_3, vip) to our format (CAT1, CAT2, CAT3, VIP)
+            let categoryKey = '';
+            if (category.CategoryNo === 'vip') {
+              categoryKey = 'VIP';
+            } else if (category.CategoryNo === 'cat_1') {
+              categoryKey = 'CAT1';
+            } else if (category.CategoryNo === 'cat_2') {
+              categoryKey = 'CAT2';
+            } else if (category.CategoryNo === 'cat_3') {
+              categoryKey = 'CAT3';
+            }
+            
+            if (categoryKey) {
+              prices[categoryKey] = Number(category.Price);
+            }
+          });
+        } else {
+          // Only use fallback prices if no categories found in API
+          console.warn('No category data found in API response, using fallback prices');
+          prices.VIP = 399;
+          prices.CAT1 = 299;
+          prices.CAT2 = 199;
+          prices.CAT3 = 99;
+        }
         
         // Transform the event data to match frontend expectations
         const transformedEvent = {
@@ -220,23 +261,16 @@ const eventService = {
           image: imagePath,
           description: `Join us for an unforgettable concert featuring ${eventData.Artist}!`,
           category: 'Concert',
-          price: {
-            VIP: 399,
-            CAT1: 299,
-            CAT2: 199,
-            CAT3: 99
-          },
-          availableSeats: [
-            { area: "VIP", quantity: 20 },
-            { area: "CAT1", quantity: 50 },
-            { area: "CAT2", quantity: 100 },
-            { area: "CAT3", quantity: 200 }
-          ],
+          price: prices,
+          // Store the raw category data for later use
+          rawCategoryData: categoryData,
+          // Note: Available seats will be fetched from a separate inventory microservice
+          // This is intentionally omitted until the microservice integration is complete
           // Keep original EventId field as well
           EventId: parseInt(eventData.EventId, 10) || parseInt(eventId, 10) || 1
         };
         
-        console.log('Transformed single event:', transformedEvent);
+        console.log('Transformed single event with API pricing:', transformedEvent);
         return transformedEvent;
       }
       

@@ -1,8 +1,5 @@
 import axios from 'axios';
 
-// Detect development vs production environment
-const isProduction = process.env.NODE_ENV === 'production';
-
 // Use the URL that works directly in the browser
 const API_URL = 'http://localhost:8000';
 
@@ -11,8 +8,7 @@ const SHOULD_USE_KONG = false; // Set to false since direct calls to /events/ wo
 const API_PATH_PREFIX = SHOULD_USE_KONG ? '/ESDProject/rest/' : ''; 
 
 // Debug log
-console.log('API client initialized with URL:', API_URL, 
-  SHOULD_USE_KONG ? '(using Kong Gateway)' : '(using direct endpoint)');
+console.log('API client initialized with URL:', API_URL);
 
 // Create axios instance with default config
 const apiClient = axios.create({
