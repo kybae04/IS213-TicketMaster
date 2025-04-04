@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_GATEWAY_URL || 'http://localhost:8000';
+// In development with the proxy, we use relative URLs
+// In production, we use the full API_URL
+const isProduction = process.env.NODE_ENV === 'production';
+const API_URL = isProduction ? (process.env.REACT_APP_API_GATEWAY_URL || 'http://localhost:8000') : '';
 
 // Create axios instance with default config
 const apiClient = axios.create({

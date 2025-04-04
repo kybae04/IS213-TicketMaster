@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { events } from '../utils/mockEventData';
+import { useEvents } from '../context/EventContext';
 import { Badge } from '../components/ui/badge';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -14,6 +14,14 @@ import {
 } from '../components/ui/carousel';
 
 function HomePage() {
+  // Get events data and functions from context
+  const { events, loading, error, fetchEvents } = useEvents();
+  
+  // Fetch events when component mounts
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]); // fetchEvents is now stabilized with useCallback
+
   // Format price for display
   const formatPrice = (price) => {
     if (typeof price === 'object') {
@@ -24,74 +32,101 @@ function HomePage() {
     return price; // If price is already formatted
   };
   
-  const renderEventCard = (event) => (
-    <CarouselItem key={event.id} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
-      <Link to={`/event/${event.id}`} className="block h-full">
-        <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-200">
-          <div className="relative w-full h-48 overflow-hidden">
-            <img
-              src={event.image}
-              alt={event.title}
-              className="w-full h-full object-cover"
-            />
-            <Badge
-              className={`absolute top-3 right-3 font-medium ${
-                event.category === 'Sports' ? 'bg-blue-600 text-white' :
-                event.category === 'Concert' ? 'bg-purple-600 text-white' :
-                event.category === 'Theater' ? 'bg-red-600 text-white' :
-                event.category === 'Festival' ? 'bg-green-600 text-white' :
-                'bg-gray-600 text-white'
-              }`}
-            >
-              {event.category}
-            </Badge>
-          </div>
-          <div className="p-4 pb-2">
-            <h3 className="text-lg line-clamp-1 font-semibold">{event.title}</h3>
-            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map-pin">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              {event.location}
-            </div>
-          </div>
-          <div className="p-4 pt-0">
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calendar">
-                <path d="M8 2v4" />
-                <path d="M16 2v4" />
-                <rect width="18" height="18" x="3" y="4" rx="2" />
-                <path d="M3 10h18" />
-              </svg>
-              {event.date} at {event.time}
-            </div>
-          </div>
-          <div className="p-4 pt-0 flex justify-between items-center">
-            <span className="font-bold text-gray-900 dark:text-white">
-              {formatPrice(event.price)}
-            </span>
-            <Button 
-              asChild
-              variant="primary"
-              className="px-4 py-2 text-sm"
-            >
-              <Link 
-                to={`/event/${event.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1"
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <div className="text-red-500 text-xl mb-4">Error loading events</div>
+        <Button onClick={() => fetchEvents()}>Try Again</Button>
+      </div>
+    );
+  }
+  
+  // Make sure events is always an array to prevent mapping errors
+  const eventsArray = Array.isArray(events) ? events : [];
+  
+  const renderEventCard = (event) => {
+    if (!event || !event.id) return null;
+    
+    return (
+      <CarouselItem key={event.id} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+        <Link to={`/event/${event.id}`} className="block h-full">
+          <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-200">
+            <div className="relative w-full h-48 overflow-hidden">
+              <img
+                // Use a default image or placeholder if event.image is not available
+                src={event.image || `https://picsum.photos/seed/${event.id}/400/300`}
+                alt={event.title}
+                className="w-full h-full object-cover"
+              />
+              <Badge
+                className={`absolute top-3 right-3 font-medium ${
+                  event.category === 'Sports' ? 'bg-blue-600 text-white' :
+                  event.category === 'Concert' ? 'bg-purple-600 text-white' :
+                  event.category === 'Theater' ? 'bg-red-600 text-white' :
+                  event.category === 'Festival' ? 'bg-green-600 text-white' :
+                  'bg-gray-600 text-white'
+                }`}
               >
-                Get Tickets
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m9 18 6-6-6-6"/>
+                {event.category}
+              </Badge>
+            </div>
+            <div className="p-4 pb-2">
+              <h3 className="text-lg line-clamp-1 font-semibold">{event.title}</h3>
+              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map-pin">
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                  <circle cx="12" cy="10" r="3" />
                 </svg>
-              </Link>
-            </Button>
-          </div>
-        </Card>
-      </Link>
-    </CarouselItem>
-  );
+                {event.location}
+              </div>
+            </div>
+            <div className="p-4 pt-0">
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calendar">
+                  <path d="M8 2v4" />
+                  <path d="M16 2v4" />
+                  <rect width="18" height="18" x="3" y="4" rx="2" />
+                  <path d="M3 10h18" />
+                </svg>
+                {event.date} at {event.time}
+              </div>
+            </div>
+            <div className="p-4 pt-0 flex justify-between items-center">
+              <span className="font-bold text-gray-900 dark:text-white">
+                {formatPrice(event.price)}
+              </span>
+              <Button 
+                asChild
+                variant="primary"
+                className="px-4 py-2 text-sm"
+              >
+                <Link 
+                  to={`/event/${event.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1"
+                >
+                  Get Tickets
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m9 18 6-6-6-6"/>
+                  </svg>
+                </Link>
+              </Button>
+            </div>
+          </Card>
+        </Link>
+      </CarouselItem>
+    );
+  };
   
   return (
     <>
@@ -147,18 +182,24 @@ function HomePage() {
         </div>
         
         <div className="relative px-8">
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            className="w-full relative">
-            <CarouselContent className="-ml-4">
-              {events.map(renderEventCard)}
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
+          {eventsArray.length > 0 ? (
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+              }}
+              className="w-full relative">
+              <CarouselContent className="-ml-4">
+                {eventsArray.map(renderEventCard)}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
+          ) : (
+            <div className="text-center p-8 text-gray-500">
+              No events available at the moment.
+            </div>
+          )}
         </div>
       </section>
 

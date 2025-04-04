@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import eventService from '../services/eventService';
 
 // Initial state
@@ -36,8 +36,8 @@ const eventReducer = (state, action) => {
 export const EventProvider = ({ children }) => {
   const [state, dispatch] = useReducer(eventReducer, initialState);
 
-  // Action to fetch all events
-  const fetchEvents = async () => {
+  // Use useCallback to prevent recreation of this function on each render
+  const fetchEvents = useCallback(async () => {
     dispatch({ type: 'FETCH_EVENTS_REQUEST' });
     try {
       const data = await eventService.getAllEvents();
@@ -48,10 +48,10 @@ export const EventProvider = ({ children }) => {
         payload: error.message || 'Failed to fetch events' 
       });
     }
-  };
+  }, []);
 
-  // Action to fetch a single event by ID
-  const fetchEventById = async (eventId) => {
+  // Use useCallback to prevent recreation of this function on each render
+  const fetchEventById = useCallback(async (eventId) => {
     dispatch({ type: 'FETCH_EVENT_REQUEST' });
     try {
       const data = await eventService.getEventById(eventId);
@@ -62,7 +62,7 @@ export const EventProvider = ({ children }) => {
         payload: error.message || `Failed to fetch event with ID ${eventId}` 
       });
     }
-  };
+  }, []);
 
   return (
     <EventContext.Provider value={{ 
