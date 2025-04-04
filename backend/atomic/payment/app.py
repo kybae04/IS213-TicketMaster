@@ -65,7 +65,7 @@ def process_payment():
     # convert amount to cents
     amount_cents = int(data['amount'] * 100)
 
-    # Create the charge via Stripe
+    # Step 1: Create the charge via Stripe
     stripe_response = create_charge(
         amount=amount_cents,
         currency=data['currency'],
@@ -74,10 +74,26 @@ def process_payment():
         idempotencyKey=data['idempotency_key']
     )
 
+    # Step 2: Handle failure
     if "error" in stripe_response:
-        return jsonify(stripe_response), 400
+        error_message = stripe_response["error"]
 
-    # Store the transaction in the database using the Payment model
+        # Log failed payment attempt in idempotency cache
+        idempotency_key_record = IdempotencyKey(
+            key=data['idempotency_key'],
+            response={
+                "transactionID": transaction_id,
+                "message": f"Payment failed: {error_message}"
+            },
+            created_at=datetime.utcnow()
+        )
+
+        db.session.add(idempotency_key_record)
+        db.session.commit()
+
+        return jsonify({"error": error_message, "transactionID": transaction_id}), 400
+
+    # Step 3: Record successful payment
     # logging.debug("Creating payment record")
     payment_record = Payment(
         transactionID=transaction_id,

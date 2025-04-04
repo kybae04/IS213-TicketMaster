@@ -52,8 +52,7 @@ def reserve_seat(seat_id):
         reservation_response = {
             "message": "Seat reserved successfully",
             "seatid": seat_id
-            }.execute()
-
+        }
 
         return jsonify(reservation_response), 200
     else:
