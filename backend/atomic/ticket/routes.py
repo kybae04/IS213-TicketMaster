@@ -10,6 +10,7 @@ import uuid
 logger = logging.getLogger(__name__)
 
 TRADE_TICKET_SERVICE_URL = Config.TRADE_TICKET_SERVICE_URL
+SEAT_ALLOC_SERVICE_URL = Config.SEAT_ALLOC_SERVICE_URL
 
 def register_routes(app):
     # Create a Pending Ticket with Idempotency Key
@@ -49,6 +50,33 @@ def register_routes(app):
             db.session.rollback()
             logger.error(f"Error creating ticket: {str(e)}")
             return jsonify({"error": "Failed to create ticket"}), 500
+        
+    # Get all tickets for user and event with pending_payment status
+    @app.route('/tickets/pending/<event_id>/<category>/<user_id>', methods=['GET'])
+    def get_pending_tickets(event_id, category, user_id):
+        try:
+            tickets = Ticket.query.filter_by(eventID=event_id, userID=user_id, status="pending_payment").all()
+
+            filtered = []
+            for ticket in tickets:
+                seat_response = requests.get(f"{SEAT_ALLOC_SERVICE_URL}/seat/details/{ticket.seatID}")
+                if seat_response.status_code == 200 and seat_response.json().get("cat_no") == category:
+                    filtered.append({
+                        "ticketID": ticket.ticketID,
+                        "seatID": ticket.seatID
+                    })
+
+            if not filtered:
+                return jsonify({"ticket_ids": [], "seat_ids": []}), 404
+            
+            return jsonify({
+                "ticket_ids": [t["ticketID"] for t in filtered],
+                "seat_ids": [t["seatID"] for t in filtered]
+            }), 200
+
+        except Exception as e:
+            logger.error(f"Error retrieving pending tickets: {str(e)}")
+            return jsonify({"error": "Failed to retrieve pending tickets"}), 500
 
     # Confirm Ticket After Payment
     @app.route('/ticket/confirm/<ticket_id>', methods=['PUT'])
