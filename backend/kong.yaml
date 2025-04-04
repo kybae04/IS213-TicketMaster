@@ -196,6 +196,23 @@ routes:
     headers: ~
     strip_path: false
     paths:
+      - ~/tickets/pending/(?<event_id>[^/]+)/(?<category>[^/]+)/(?<user_id>[^/]+)
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-pending-tickets
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
+    headers: ~
+    strip_path: false
+    paths:
       - ~/tickets/user/(?<userID>[^/]+)
     path_handling: v0
     https_redirect_status_code: 426
