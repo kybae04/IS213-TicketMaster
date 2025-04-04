@@ -292,7 +292,7 @@ routes:
     id: 3cad82b0-cfac-4ec3-bdc1-bb1b7fad6ce6
     strip_path: false
     paths:
-      - ~/timeout/(?<seat_id>[^/]+)/(?<ticket_id>[^/]+)$
+      - ~/timeout/(?<event_id>[^/]+)/(?<category>[^/]+)$
     path_handling: v0
     https_redirect_status_code: 426
     name: timeout
