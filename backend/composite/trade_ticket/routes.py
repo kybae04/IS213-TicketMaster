@@ -532,7 +532,7 @@ def accept_trade_request():
             # Use the trade_ticket_by_request_id endpoint to process the trade
             print(f"Calling ticket service for trade with ID: {trade_request_id}")
             
-            response = requests.post(
+            response = requests.put(
                 f"{TICKET_SERVICE_URL}/ticket/trade/request/{trade_request_id}",
                 json={}  # No body needed as trade request ID is in URL path
             )
