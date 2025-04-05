@@ -2,134 +2,98 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-// import axios from 'axios';
+import { useMyTickets } from '../context/myTicketsContext';
 
 const MyTicketsPage = () => {
   const navigate = useNavigate();
-  const [tickets, setTickets] = useState([]);
+  // const [tickets, setTickets] = useState([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [ticketToCancel, setTicketToCancel] = useState(null);
+  const { transactions, fetchGroupedTickets, loading, error } = useMyTickets();
+
+  // useEffect(() => {
+  //   // Mock fetching tickets data
+  //   const fetchTickets = async () => {
+  //     try {
+        
+  //       const mockTickets = [
+  //         {
+  //           ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
+  //           transactionID: 'txn-123456',
+  //           eventID: "1",
+  //           eventTitle: 'Taylor Swift: The Eras Tour',
+  //           eventDate: 'June 15, 2023',
+  //           eventTime: '7:30 PM',
+  //           numTickets: 2,
+  //           // location: 'MetLife Stadium, New Jersey',
+  //           // category: 'VIP',
+  //           // section: 'A',
+  //           // row: '1',
+  //           // seats: ['12', '13'],
+  //           // price: 450.00,
+  //           // purchaseDate: '2023-04-10',
+  //           status: 'confirmed',
+  //           // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-1234-5678',
+  //           eventImage: 'https://source.unsplash.com/random/800x500/?concert',
+  //         },
+  //         {
+  //           ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
+  //           transactionID: 'txn-123456',
+  //           eventID: "2",
+  //           eventTitle: 'Coldplay: Music of the Spheres',
+  //           eventDate: 'August 22, 2023',
+  //           eventTime: '8:00 PM',
+  //           numTickets: 2,
+  //           // location: 'Wembley Stadium, London',
+  //           // category: 'CAT1',
+  //           // section: 'B',
+  //           // row: '5',
+  //           // seats: ['22'],
+  //           // price: 180.00,
+  //           // purchaseDate: '2023-05-15',
+  //           status: 'confirmed',
+  //           // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-8765-4321',
+  //           eventImage: 'https://source.unsplash.com/random/800x500/?music',
+  //         },
+  //         {
+  //           ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
+  //           transactionID: 'txn-123456',
+  //           eventID: "3",
+  //           eventTitle: 'NBA Finals 2023: Game 7',
+  //           eventDate: 'June 18, 2023',
+  //           eventTime: '9:00 PM',
+  //           numTickets: 2,
+  //           // location: 'Madison Square Garden, New York',
+  //           // category: 'CAT2',
+  //           // section: 'Lower Bowl',
+  //           // row: '12',
+  //           // seats: ['5', '6', '7'],
+  //           // price: 350.00,
+  //           // purchaseDate: '2023-05-02',
+  //           status: 'voided',
+  //           // refundAmount: 350.00,
+  //           // refundDate: '2023-05-10',
+  //           // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-9876-5432',
+  //           eventImage: 'https://source.unsplash.com/random/800x500/?basketball',
+  //         }
+  //       ];
+
+  //       setTickets(mockTickets);
+  //     } catch (error) {
+  //       console.error('Error fetching tickets:', error);
+  //     }
+  //   };
+
+  //   fetchTickets();
+  // }, []);
 
   useEffect(() => {
-    // Mock fetching tickets data
-    const fetchTickets = async () => {
-      try {
-        // In a real app, this would be an API call
-        /*
-        * MICROSERVICE INTEGRATION POINT:
-        * 
-        * In production, you would fetch from the tickets microservice:
-        * const response = await fetch('https://api-gateway.example.com/tickets/my-tickets', {
-        *   headers: { Authorization: `Bearer ${token}` }
-        * });
-        * const data = await response.json();
-        */
-
-        // For demo purposes, use mock data immediately without loading state
-        // // mock data based on endpoints response
-        // const mockData = [
-        //   {
-        //     "eventID": "2",
-        //     "seatID": "442055a3-15ec-4c70-981e-d38a7762f679",
-        //     "status": "pending_payment",
-        //     "ticketID": "1862391e-1a52-4523-a79c-7e60070ee8ae",
-        //     "tradeRequestID": "450ee9e8-fdc6-411b-9322-89dca41c5509",
-        //     "transactionID": null,
-        //     "userID": "user456"
-        //   },
-        //   {
-        //     "eventID": "3",
-        //     "seatID": "130c4cf4-7262-411c-a518-dccaced5369e",
-        //     "status": "confirmed",
-        //     "ticketID": "0576e78f-d7ae-4899-af16-27dc6b5f68ad",
-        //     "tradeRequestID": "5cd8df92-ce2e-4bab-9011-3a61994ac82f",
-        //     "transactionID": "txn-138509",
-        //     "userID": "user456"
-        //   },
-        //   {
-        //     "eventID": "1",
-        //     "seatID": "a574d357-c546-4783-a998-115130a886b5",
-        //     "status": "confirmed",
-        //     "ticketID": "2ba51120-80d2-4b20-af07-68210a271a60",
-        //     "tradeRequestID": "95ccc98a-7a4a-4adf-88ab-ad0473d39647",
-        //     "transactionID": "txn-120685",
-        //     "userID": "user456"
-        //   }
-        // ]
-        const mockTickets = [
-          {
-            ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
-            transactionID: 'txn-123456',
-            eventID: "1",
-            eventTitle: 'Taylor Swift: The Eras Tour',
-            eventDate: 'June 15, 2023',
-            eventTime: '7:30 PM',
-            numTickets: 2,
-            // location: 'MetLife Stadium, New Jersey',
-            // category: 'VIP',
-            // section: 'A',
-            // row: '1',
-            // seats: ['12', '13'],
-            // price: 450.00,
-            // purchaseDate: '2023-04-10',
-            status: 'confirmed',
-            // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-1234-5678',
-            eventImage: 'https://source.unsplash.com/random/800x500/?concert',
-          },
-          {
-            ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
-            transactionID: 'txn-123456',
-            eventID: "2",
-            eventTitle: 'Coldplay: Music of the Spheres',
-            eventDate: 'August 22, 2023',
-            eventTime: '8:00 PM',
-            numTickets: 2,
-            // location: 'Wembley Stadium, London',
-            // category: 'CAT1',
-            // section: 'B',
-            // row: '5',
-            // seats: ['22'],
-            // price: 180.00,
-            // purchaseDate: '2023-05-15',
-            status: 'confirmed',
-            // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-8765-4321',
-            eventImage: 'https://source.unsplash.com/random/800x500/?music',
-          },
-          {
-            ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
-            transactionID: 'txn-123456',
-            eventID: "3",
-            eventTitle: 'NBA Finals 2023: Game 7',
-            eventDate: 'June 18, 2023',
-            eventTime: '9:00 PM',
-            numTickets: 2,
-            // location: 'Madison Square Garden, New York',
-            // category: 'CAT2',
-            // section: 'Lower Bowl',
-            // row: '12',
-            // seats: ['5', '6', '7'],
-            // price: 350.00,
-            // purchaseDate: '2023-05-02',
-            status: 'voided',
-            // refundAmount: 350.00,
-            // refundDate: '2023-05-10',
-            // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-9876-5432',
-            eventImage: 'https://source.unsplash.com/random/800x500/?basketball',
-          }
-        ];
-
-        setTickets(mockTickets);
-      } catch (error) {
-        console.error('Error fetching tickets:', error);
-      }
-    };
-
-    fetchTickets();
-  }, []);
+    fetchGroupedTickets();
+  }, [fetchGroupedTickets]);
 
   // call the refund-eligibility function, then if eligible, show the cancel modal
-  const handleCancelClick = (ticket) => {
-    setTicketToCancel(ticket);
+  const handleCancelClick = (txn) => {
+    setTicketToCancel(txn);
     setShowCancelModal(true);
   };
 
@@ -137,16 +101,17 @@ const MyTicketsPage = () => {
     try {
 
       // For demo purposes, update the local state
-      setTickets(tickets.map(ticket =>
-        ticket.id === ticketToCancel.id
-          ? {
-            ...ticket,
-            status: 'voided',
-            refundAmount: ticket.price,
-            refundDate: new Date().toISOString().split('T')[0]
-          }
-          : ticket
-      ));
+      // setTransactions(transactions.map(ticket =>
+      //   ticket.transactionID === ticketToCancel.transactionID
+      //     ? {
+      //       ...ticket,
+      //       status: 'voided'
+      //       // refundAmount: ticket.price,
+      //       // refundDate: new Date().toISOString().split('T')[0]
+      //     }
+      //     : ticket
+      // ));
+      await fetchGroupedTickets();
 
       setShowCancelModal(false);
 
@@ -173,7 +138,7 @@ const MyTicketsPage = () => {
         </Button>
       </div>
 
-      {tickets.length === 0 ? (
+      {transactions.length === 0 ? (
         <div className="text-center py-12 bg-gray-100 dark:bg-gray-800 rounded-lg">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -193,7 +158,7 @@ const MyTicketsPage = () => {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tickets.map((ticket) => (
+            {transactions.map((ticket) => (
               <Card key={ticket.id} className={`overflow-hidden ${ticket.status === 'voided' ? 'opacity-70' : ''}`}>
                 <div className="relative h-48">
                   <img
@@ -251,7 +216,7 @@ const MyTicketsPage = () => {
                     </div> */}
                     <div className="flex justify-between mb-1">
                       <span className="text-gray-500 dark:text-gray-400 text-sm">Number of Tickets:</span>
-                      <span className="text-gray-900 dark:text-white text-sm font-medium">2</span> {/* CHANGE LATER, STATIC NOW */}
+                      <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.numTickets}</span> {/* CHANGE LATER, STATIC NOW */}
                     </div>
                   </div>
 
