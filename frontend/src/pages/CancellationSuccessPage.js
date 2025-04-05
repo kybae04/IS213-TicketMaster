@@ -14,8 +14,8 @@ const CancellationSuccessPage = () => {
       setCancelledTicket({
         ...location.state.ticket,
         refundAmount: location.state.ticket.price,
-        refundDate: new Date().toLocaleDateString(),
-        estimatedRefundDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString()
+        // refundDate: new Date().toLocaleDateString(),
+        // estimatedRefundDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString()
       });
     } else {
       // Redirect to home if no data
@@ -93,13 +93,13 @@ const CancellationSuccessPage = () => {
           <h2 className="text-xl font-semibold text-blue-400 mb-4">Cancellation Details</h2>
           
           <div className="mb-4">
-            <div className="flex justify-between mb-1">
+            {/* <div className="flex justify-between mb-1">
               <span className="text-gray-300">Cancellation Date:</span>
               <span className="text-white font-medium">{cancelledTicket.refundDate}</span>
-            </div>
+            </div> */}
             <div className="flex justify-between mb-1">
-              <span className="text-gray-300">Ticket ID:</span>
-              <span className="text-white font-medium">{cancelledTicket.id}</span>
+              <span className="text-gray-300">Transaction ID:</span>
+              <span className="text-white font-medium">{cancelledTicket.transactionID}</span>
             </div>
           </div>
           
@@ -107,11 +107,11 @@ const CancellationSuccessPage = () => {
           
           <h3 className="text-lg font-medium text-white mb-2">{cancelledTicket.eventTitle}</h3>
           <p className="text-gray-300 mb-1">{cancelledTicket.eventDate} at {cancelledTicket.eventTime}</p>
-          <p className="text-gray-300 mb-3">{cancelledTicket.location}</p>
+          {/* <p className="text-gray-300 mb-3">{cancelledTicket.location}</p> */}
           
           <div className="border-t border-blue-500/30 my-3"></div>
           
-          <div className="flex justify-between mb-1">
+          {/* <div className="flex justify-between mb-1">
             <span className="text-gray-300">Category:</span>
             <span className="text-white font-medium">{cancelledTicket.category}</span>
           </div>
@@ -122,10 +122,10 @@ const CancellationSuccessPage = () => {
           <div className="flex justify-between mb-1">
             <span className="text-gray-300">Row:</span>
             <span className="text-white font-medium">{cancelledTicket.row}</span>
-          </div>
+          </div> */}
           <div className="flex justify-between mb-1">
             <span className="text-gray-300">Seat(s):</span>
-            <span className="text-white font-medium">{cancelledTicket.seats.join(', ')}</span>
+            <span className="text-white font-medium">{cancelledTicket.seatIDs.join(', ')}</span>
           </div>
         </Card>
         
@@ -141,13 +141,13 @@ const CancellationSuccessPage = () => {
               <span className="text-green-200">Refund Method:</span>
               <span className="text-white font-medium">Original Payment Method</span>
             </div>
-            <div className="flex justify-between mb-1">
+            {/* <div className="flex justify-between mb-1">
               <span className="text-green-200">Estimated Refund Date:</span>
               <span className="text-white font-medium">{cancelledTicket.estimatedRefundDate}</span>
-            </div>
+            </div> */}
           </div>
           
-          <div className="bg-green-700/50 p-3 rounded mt-4">
+          {/* <div className="bg-green-700/50 p-3 rounded mt-4">
             <div className="flex items-start">
               <svg className="w-5 h-5 text-green-300 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -158,10 +158,10 @@ const CancellationSuccessPage = () => {
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
         </Card>
         
-        <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg mb-6">
+        {/* <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg mb-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">What's Next?</h2>
           <div className="space-y-4">
             <div className="flex gap-3">
@@ -200,7 +200,7 @@ const CancellationSuccessPage = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 

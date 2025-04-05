@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { useMyTickets } from '../context/myTicketsContext';
+import { useCancel } from '../context/cancelContext';
 
 const MyTicketsPage = () => {
   const navigate = useNavigate();
@@ -10,12 +11,14 @@ const MyTicketsPage = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [ticketToCancel, setTicketToCancel] = useState(null);
   const { transactions, fetchGroupedTickets, loading, error } = useMyTickets();
+  const { checkRefundEligibility, cancelTicket } = useCancel();
+
 
   // useEffect(() => {
   //   // Mock fetching tickets data
   //   const fetchTickets = async () => {
   //     try {
-        
+
   //       const mockTickets = [
   //         {
   //           ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
@@ -92,8 +95,9 @@ const MyTicketsPage = () => {
   }, [fetchGroupedTickets]);
 
   // call the refund-eligibility function, then if eligible, show the cancel modal
-  const handleCancelClick = (txn) => {
-    setTicketToCancel(txn);
+  const handleCancelClick = async (txn) => {
+    const result = await checkRefundEligibility(txn.transactionID);
+    setTicketToCancel({ ...txn, refundEligible: result.refund_eligibility });
     setShowCancelModal(true);
   };
 
@@ -111,6 +115,13 @@ const MyTicketsPage = () => {
       //     }
       //     : ticket
       // ));
+      const response = await cancelTicket(ticketToCancel.transactionID, ticketToCancel.refundEligible);
+
+      setTicketToCancel((prev) => ({
+        ...prev,
+        price: response.amount_refunded / 100
+      }))
+
       await fetchGroupedTickets();
 
       setShowCancelModal(false);
@@ -284,8 +295,11 @@ const MyTicketsPage = () => {
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
               Confirm Cancellation
             </h3>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
-              Are you sure you want to cancel your ticket for "<span className="font-medium">{ticketToCancel?.eventTitle}</span>"? You will receive a refund of ${ticketToCancel?.price.toFixed(2)}.
+            <p className="text-gray-700 dark:text-gray-300 mb-6 text-center">
+              Are you sure you want to cancel your ticket for "<span className="font-medium">{ticketToCancel?.eventTitle}</span>"?
+              {ticketToCancel?.refundEligible
+                ? " You will receive a full refund."
+                : " You will NOT be able to receive any refund."}
             </p>
             <div className="flex gap-4 justify-end">
               <Button
