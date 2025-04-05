@@ -31,6 +31,7 @@ export const CancelProvider = ({ children }) => {
     try {
       const data = await cancelService.verifyRefundEligibility(txnID);
       dispatch({ type: 'CHECK_REFUND_SUCCESS', payload: data });
+      console.log('Refund eligibility data:', data);
       return data;
     } catch (error) {
       dispatch({
