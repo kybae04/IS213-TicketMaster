@@ -7,7 +7,7 @@ from datetime import datetime
 from datetime import timedelta
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "http://localhost:3001"}}, supports_credentials=True)
 
 # URLs for the atomic services (change to docker compose names/kong routes later on when not testing locally)
 PAYMENT_SERVICE_URL = "http://payment_service:5001"
@@ -31,7 +31,7 @@ def refund_eligibility(transaction_id):
     logging.debug("Event ID:", event_id)
 
     # Step 2: Get event date
-    event_response = requests.get(f"{EVENT_SERVICE_URL}/EventAPI/events/{event_id}")
+    event_response = requests.get(f"{EVENT_SERVICE_URL}EventAPI/events/{event_id}")
     if event_response.status_code != 200:
         return jsonify({"error": "Failed to retrieve event details"}), 500
     event_data = event_response.json()
