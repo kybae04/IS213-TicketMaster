@@ -10,9 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 # URLs for the atomic services (change to docker compose names/kong routes later on when not testing locally)
-PAYMENT_SERVICE_URL = "http://payment:5001"
-SEAT_SERVICE_URL = "http://seat_allocation:5000"
-TICKET_SERVICE_URL = "http://ticket:5005"
+PAYMENT_SERVICE_URL = "http://payment_service:5001"
+SEAT_SERVICE_URL = "http://seatalloc_service:5000"
+TICKET_SERVICE_URL = "http://ticket_service:5005"
 EVENT_SERVICE_URL = "https://personal-d3kdunmg.outsystemscloud.com/ESDProject/rest/"
 
 
