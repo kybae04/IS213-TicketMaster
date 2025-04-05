@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests
 import uuid
 import logging
@@ -6,6 +7,7 @@ from datetime import datetime
 from datetime import timedelta
 
 app = Flask(__name__)
+CORS(app)
 
 # URLs for the atomic services (change to docker compose names/kong routes later on when not testing locally)
 PAYMENT_SERVICE_URL = "http://payment:5001"
