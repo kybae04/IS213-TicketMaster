@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests
 import uuid
 import pika
@@ -8,6 +9,7 @@ import traceback
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 # Update atomic services URLs to use Docker container names and internal ports
 PAYMENT_SERVICE_URL = "http://payment_service:5001"

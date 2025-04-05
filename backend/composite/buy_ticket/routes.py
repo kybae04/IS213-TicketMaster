@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests
 import uuid  # For generating idempotency keys
 import random # For randomly assigning seats
 
 app = Flask(__name__)
+CORS(app)
 
 SEAT_SERVICE_URL = "http://seatalloc_service:5000" 
 PAYMENT_SERVICE_URL = "http://payment_service:5001"

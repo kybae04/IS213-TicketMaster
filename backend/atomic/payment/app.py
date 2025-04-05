@@ -11,6 +11,7 @@ from models import Payment, IdempotencyKey
 from services.stripe_service import create_charge, refund_charge
 import random
 from datetime import datetime
+from flask_cors import CORS
 
 # Generating transaction ID
 def generate_transaction_id():
@@ -25,6 +26,7 @@ def generate_transaction_id():
 app = Flask(__name__)
 app.config.from_object(Config)
 # logging.debug("Database URL:", os.environ.get('DATABASE_URL'))
+CORS(app)  # Enable CORS for all routes
 
 db.init_app(app)
 # migrate = Migrate(app, db)

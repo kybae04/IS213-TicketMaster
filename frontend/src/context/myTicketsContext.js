@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import myTicketService from '../services/myTicketService';
+// import { useAuth } from './AuthContext'; // adjust path as needed
 
 const initialState = {
   transactions: [],
@@ -25,10 +26,14 @@ const myTicketReducer = (state, action) => {
 export const MyTicketProvider = ({ children }) => {
   const [state, dispatch] = useReducer(myTicketReducer, initialState);
 
-  const fetchGroupedTickets = async () => {
+  const fetchGroupedTickets = useCallback(async () => {
     dispatch({ type: 'FETCH_TICKETS_REQUEST' });
     try {
-      const rawTickets = await myTicketService.getMyTickets();
+      // const { user } = useAuth();
+      // const userID = user ? user.id : null;
+      const userID = "user_013"; // Replace with actual user ID or fetch from auth context
+      const rawTickets = await myTicketService.getMyTickets(userID);
+      console.log('Raw tickets:', rawTickets);
       const grouped = {};
 
       rawTickets.forEach(ticket => {
@@ -46,6 +51,8 @@ export const MyTicketProvider = ({ children }) => {
         grouped[txn].seatIDs.push(ticket.seatID);
       });
 
+      console.log('Grouped transactions:', grouped);
+
       const enriched = await Promise.all(
         Object.values(grouped).map(async txn => {
           const event = await myTicketService.getEventDetails(txn.eventID);
@@ -59,6 +66,8 @@ export const MyTicketProvider = ({ children }) => {
         })
       );
 
+      console.log('Final enriched transactions:', enriched);
+
       dispatch({ type: 'FETCH_TICKETS_SUCCESS', payload: enriched });
     } catch (error) {
       dispatch({
@@ -66,7 +75,7 @@ export const MyTicketProvider = ({ children }) => {
         payload: error.message || 'Failed to fetch tickets'
       });
     }
-  };
+  }, []);
 
   return (
     <MyTicketContext.Provider value={{ ...state, fetchGroupedTickets }}>

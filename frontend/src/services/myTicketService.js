@@ -3,7 +3,7 @@ import apiClient from "./api";
 const myTicketService = {
     getMyTickets: async (userID) => {
         try {
-            const response = await apiClient.get(`tickets/user/{userID}`)
+            const response = await apiClient.get(`/tickets/user/${userID}`)
             return response.data
         }
         catch (error) {
@@ -14,7 +14,7 @@ const myTicketService = {
 
     getSeatDetails: async (seatID) => {
         try {
-            const response = await apiClient.get(`seat/details/{seatID}`)
+            const response = await apiClient.get(`/seat/details/${seatID}`)
             return response.data
         }
         catch (error) {
@@ -25,7 +25,7 @@ const myTicketService = {
 
     getEventDetails: async (eventID) => {
         try {
-            const response = await apiClient.get(`events/{eventID}`)
+            const response = await apiClient.get(`/events/${eventID}`)
             return response.data
         } 
         catch (error) {
