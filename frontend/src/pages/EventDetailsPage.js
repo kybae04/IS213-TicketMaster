@@ -13,18 +13,18 @@ const EventDetailsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [seatQuantity, setSeatQuantity] = useState(1);
   
-  // Temporary placeholder availableSeats until inventory microservice is integrated
-  const placeholderAvailableSeats = [
-    { area: "VIP", quantity: 20 },
-    { area: "CAT1", quantity: 50 },
-    { area: "CAT2", quantity: 100 },
-    { area: "CAT3", quantity: 200 }
-  ];
-  
   // Load event data
   useEffect(() => {
     const fetchEvent = async () => {
       try {
+        // Temporary placeholder availableSeats until inventory microservice is integrated
+        const placeholderAvailableSeats = [
+          { area: "VIP", quantity: 20 },
+          { area: "CAT1", quantity: 50 },
+          { area: "CAT2", quantity: 100 },
+          { area: "CAT3", quantity: 200 }
+        ];
+        
         console.log(`Fetching event with ID: ${id}`);
         const eventData = await eventService.getEventById(id);
         console.log('Fetched event data:', eventData);

@@ -9,6 +9,7 @@ const MyTicketsPage = () => {
   // const [tickets, setTickets] = useState([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [ticketToCancel, setTicketToCancel] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const { transactions, fetchGroupedTickets, loading, error } = useMyTickets();
 
   // useEffect(() => {
