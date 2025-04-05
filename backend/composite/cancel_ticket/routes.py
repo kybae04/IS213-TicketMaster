@@ -8,9 +8,9 @@ from datetime import timedelta
 app = Flask(__name__)
 
 # URLs for the atomic services (change to docker compose names/kong routes later on when not testing locally)
-PAYMENT_SERVICE_URL = "http://localhost:5001"
-SEAT_SERVICE_URL = "http://localhost:5000"
-TICKET_SERVICE_URL = "http://localhost:5005"
+PAYMENT_SERVICE_URL = "http://payment:5001"
+SEAT_SERVICE_URL = "http://seat_allocation:5000"
+TICKET_SERVICE_URL = "http://ticket:5005"
 EVENT_SERVICE_URL = "https://personal-d3kdunmg.outsystemscloud.com/ESDProject/rest/"
 
 
@@ -24,8 +24,8 @@ def refund_eligibility(transaction_id):
         return jsonify({"error": "Failed to retrieve tickets"}), 500
     
     tickets = ticket_response.json()
-    # event_id = tickets[0]["eventID"]
-    event_id = 5 ### HARDCODED, CHANGE LATER
+    event_id = tickets[0]["eventID"]
+    # event_id = 5 ### HARDCODED, CHANGE LATER
     logging.debug("Event ID:", event_id)
 
     # Step 2: Get event date
@@ -80,16 +80,16 @@ def cancel_transaction(transaction_id):
 
     # Step 5: Release seat
     for ticket in tickets:
-        seat_id = "db634fd3-57a8-4f3a-a53d-9243f8381345" ###HARDCODED CHANGE LATER, currently only one ticket in transaction, later on use code below
-        # seat_id = ticket["seatID"]
+        # seat_id = "db634fd3-57a8-4f3a-a53d-9243f8381345" ###HARDCODED CHANGE LATER, currently only one ticket in transaction, later on use code below
+        seat_id = ticket["seatID"]
         release_response = requests.put(f"{SEAT_SERVICE_URL}/release/{seat_id}")
         if release_response.status_code != 200:
             return jsonify({"error": "Failed to release seat", "statuscode": release_response.status_code}), 500
 
     if refund_eligibility is True:
         # Step 6: Refund payment
-        # payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/{transaction_id}")
-        payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/txn-433849") ### HARDCODED TRANSACTIONID, CHANGE LATER to the code above
+        payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/{transaction_id}")
+        # payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/txn-433849") ### HARDCODED TRANSACTIONID, CHANGE LATER to the code above
 
         if payment_response.status_code != 200:
             return jsonify({"error": "Failed to retrieve stripeID"}), 500

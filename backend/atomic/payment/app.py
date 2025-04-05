@@ -153,8 +153,7 @@ def get_payment(transactionID):
         "amount": payment_record.amount,
         "currency": payment_record.currency,
         "chargeType": payment_record.chargeType,
-        "status": payment_record.status,
-        "idempotencyKey": payment_record.idempotencyKey
+        "status": payment_record.status
     }), 200
 
 @app.route('/refund', methods=['POST'])
