@@ -11,56 +11,63 @@ CORS(app)
 @app.route("/verify-ticket/<ticket_id>", methods=["GET"])
 def verify_ticket(ticket_id):
     """Check if a ticket is tradable based on multiple conditions."""
-    
-    ticket = fetch_ticket(ticket_id)
-    if not ticket:
-        return jsonify({"error": "Ticket not found", "tradable": False})
-    
-    event = fetch_event(ticket["eventID"])
-    if not event:
-        return jsonify({"error": "Event not found", "tradable": False})
-    
-    seat = fetch_seat(ticket["seatID"])
-    if not seat:
-        return jsonify({"error": "Seat not found", "tradable": False})
+    try:
+        # Fetch ticket details
+        ticket = fetch_ticket(ticket_id)
+        if not ticket:
+            return jsonify({"error": "Ticket not found"}), 404
+        
+        # Fetch event details
+        event = fetch_event(ticket["eventID"])
+        if not event:
+            return jsonify({"error": "Event not found", "tradable": False}), 404
+        
+        # Fetch seat details
+        seat = fetch_seat(ticket["seatID"])
+        if not seat:
+            return jsonify({"error": "Seat not found", "tradable": False}), 404
 
 
-    ### CRITERIA 1: Ticket must be confirmed ###
+        ### CRITERIA 1: Ticket must be confirmed ###
 
-    if ticket["status"] != "confirmed":
-        return jsonify({"ticket_id": ticket_id, "tradable": False})
-    
-    ### END OF CRITERIA 1 ###
-
-
-    ### CRITERIA 2: Event date must be at least one day after today ###
-
-    event_date = datetime.datetime.strptime(event["EventResponse"]["EventDate"], "%Y-%m-%d").date()
-    if event_date <= datetime.date.today():
-        return jsonify({"ticket_id": ticket_id, "tradable": False})
-    
-    ### END OF CRITERIA 2 ###
+        if ticket["status"] != "confirmed":
+            return jsonify({"ticket_id": ticket_id, "tradable": False})
+        
+        ### END OF CRITERIA 1 ###
 
 
-    ### CRITERIA 3: If seat is not valid, ticket is not tradable (Logic from Seat Atomic Service) ###
+        ### CRITERIA 2: Event date must be at least one day after today ###
 
-    # Fetch seat validity from Seat Atomic Service
-    seat_response = requests.get(f"{SEAT_SERVICE_URL}/seat/validity/{ticket['seatID']}/{seat['cat_no']}")
-    
-    if seat_response.status_code != 200:
-        return jsonify({"error": "Seat verification failed", "tradable": False})
-
-    seat_data = seat_response.json()
-    
-    # If seat is not valid, ticket is not tradable
-    if not seat_data.get("valid", False):
-        return jsonify({"ticket_id": ticket_id, "tradable": False})
-    
-    ### END OF CRITERIA 3 ###
+        event_date = datetime.datetime.strptime(event["EventResponse"]["EventDate"], "%Y-%m-%d").date()
+        if event_date <= datetime.date.today():
+            return jsonify({"ticket_id": ticket_id, "tradable": False})
+        
+        ### END OF CRITERIA 2 ###
 
 
-    # If all conditions are met, ticket is tradable
-    return jsonify({"ticket_id": ticket_id, "tradable": True})
+        ### CRITERIA 3: If seat is not valid, ticket is not tradable (Logic from Seat Atomic Service) ###
+
+        # Fetch seat validity from Seat Atomic Service
+        seat_response = requests.get(f"{SEAT_SERVICE_URL}/seat/validity/{ticket['seatID']}/{seat['cat_no']}")
+        
+        if seat_response.status_code != 200:
+            return jsonify({"error": "Seat verification failed", "tradable": False}), 404
+
+        seat_data = seat_response.json()
+        
+        # If seat is not valid, ticket is not tradable
+        if not seat_data.get("valid", False):
+            return jsonify({"ticket_id": ticket_id, "tradable": False})
+        
+        ### END OF CRITERIA 3 ###
+
+
+        # If all conditions are met, ticket is tradable
+        return jsonify({"ticket_id": ticket_id, "tradable": True})
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to verify ticket: {str(e)}"}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=6002, debug=True)
