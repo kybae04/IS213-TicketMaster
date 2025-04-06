@@ -17,18 +17,18 @@ EVENT_SERVICE_URL = "https://personal-d3kdunmg.outsystemscloud.com/ESDProject/re
 
 
 
-@app.route('/refund-eligibility/<transaction_id>', methods=['GET'])
-def refund_eligibility(transaction_id):
+@app.route('/refund-eligibility/<event_id>', methods=['GET'])
+def refund_eligibility(event_id):
     # Step 1: Get all tickets for this transaction
-    ticket_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/transaction/{transaction_id}")
+    # ticket_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/transaction/{transaction_id}")
 
-    if ticket_response.status_code != 200:
-        return jsonify({"error": "Failed to retrieve tickets"}), 500
+    # if ticket_response.status_code != 200:
+    #     return jsonify({"error": "Failed to retrieve tickets"}), 500
     
-    tickets = ticket_response.json()
-    event_id = tickets[0]["eventID"]
-    # event_id = 5 ### HARDCODED, CHANGE LATER
-    logging.debug("Event ID:", event_id)
+    # tickets = ticket_response.json()
+    # event_id = tickets[0]["eventID"]
+    # # event_id = 5 ### HARDCODED, CHANGE LATER
+    # logging.debug("Event ID:", event_id)
 
     # Step 2: Get event date
     event_response = requests.get(f"{EVENT_SERVICE_URL}EventAPI/events/{event_id}")

@@ -59,7 +59,7 @@ def process_payment():
     # Validate required fields
     required_fields = ['amount', 'currency', 'source','idempotency_key']
     if not all(field in data for field in required_fields):
-        return jsonify({"error": "Missing required fields. Required fields:", required_fields}), 400
+        return jsonify({"error": f"Missing required fields. Required fields: {required_fields}"}), 400
 
     # Generate transactionID
     transaction_id = generate_transaction_id()
