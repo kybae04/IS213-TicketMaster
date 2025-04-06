@@ -25,9 +25,9 @@ def register_routes(app):
                     return jsonify({"error": f"Missing required field: {field}"}), 400
         
             # Create a new ticket
-            ticket_id = str(uuid.uuid4())
+            ticketID = str(uuid.uuid4())
             new_ticket = Ticket(
-                ticketID=ticket_id,
+                ticketID=ticketID,
                 eventID=data['eventID'],
                 seatID=data['seatID'],
                 userID=data['userID'],
@@ -38,7 +38,7 @@ def register_routes(app):
             db.session.commit()
         
             return jsonify({
-                "ticketID": ticket_id,
+                "ticketID": ticketID,
                 "eventID": data['eventID'],
                 "seatID": data['seatID'],
                 "userID": data['userID'],
@@ -51,8 +51,8 @@ def register_routes(app):
             return jsonify({"error": "Failed to create ticket"}), 500
 
     # Confirm Ticket After Payment
-    @app.route('/ticket/confirm/<ticket_id>', methods=['PUT'])
-    def confirm_ticket(ticket_id):
+    @app.route('/ticket/confirm/<ticketID>', methods=['PUT'])
+    def confirm_ticket(ticketID):
         try:
             data = request.json
 
@@ -61,7 +61,7 @@ def register_routes(app):
                 return jsonify({"error": "Missing required field: transactionID"}), 400
         
             # Find ticket using the URL parameter
-            ticket = Ticket.query.filter_by(ticketID=ticket_id).first()
+            ticket = Ticket.query.filter_by(ticketID=ticketID).first()
         
             if not ticket:
                 return jsonify({"error": "Ticket not found"}), 404
@@ -76,7 +76,7 @@ def register_routes(app):
                     }), 200
                 else:
                     # Different transaction ID - potential duplicate payment or error
-                    logger.warning(f"Conflicting transactionID for ticket {ticket_id}. Existing: {ticket.transactionID}, Received: {data['transactionID']}")
+                    logger.warning(f"Conflicting transactionID for ticket {ticketID}. Existing: {ticket.transactionID}, Received: {data['transactionID']}")
                     return jsonify({
                     "error": "Ticket already confirmed with different transaction ID",
                     "ticketID": ticket.ticketID
@@ -94,7 +94,7 @@ def register_routes(app):
             ticket.transactionID = data['transactionID']
             db.session.commit()
 
-            logger.info(f"Ticket {ticket_id} confirmed with transaction {data['transactionID']}")
+            logger.info(f"Ticket {ticketID} confirmed with transaction {data['transactionID']}")
         
             return jsonify({
                 "message": "Ticket successfully confirmed",
@@ -396,8 +396,8 @@ def register_routes(app):
             return jsonify({"error": f"Failed to process trade request: {str(e)}"}), 500
 
     # Set Trade Request ID on a ticket
-    @app.route('/ticket/<ticket_id>/set-trade-id', methods=['POST'])
-    def set_trade_request_id(ticket_id):
+    @app.route('/ticket/<ticketID>/set-trade-id', methods=['POST'])
+    def set_trade_request_id(ticketID):
         """
         Set the trade request ID on a ticket
         This endpoint allows marking a ticket as part of a trade request
@@ -408,7 +408,7 @@ def register_routes(app):
             if 'tradeRequestID' not in data:
                 return jsonify({"error": "Missing required field: tradeRequestID"}), 400
                 
-            ticket = Ticket.query.filter_by(ticketID=ticket_id).first()
+            ticket = Ticket.query.filter_by(ticketID=ticketID).first()
             
             if not ticket:
                 return jsonify({"error": "Ticket not found"}), 404
@@ -417,11 +417,11 @@ def register_routes(app):
             ticket.tradeRequestID = data['tradeRequestID']
             db.session.commit()
             
-            logger.info(f"Successfully set trade request ID {data['tradeRequestID']} on ticket {ticket_id}")
+            logger.info(f"Successfully set trade request ID {data['tradeRequestID']} on ticket {ticketID}")
             
             return jsonify({
                 "message": "Trade request ID set successfully",
-                "ticketID": ticket_id,
+                "ticketID": ticketID,
                 "tradeRequestID": data['tradeRequestID']
             }), 200
             
