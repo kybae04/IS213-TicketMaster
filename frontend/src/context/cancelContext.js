@@ -26,10 +26,10 @@ const cancelReducer = (state, action) => {
 export const CancelProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cancelReducer, initialState);
 
-  const checkRefundEligibility = useCallback(async (txnID) => {
+  const checkRefundEligibility = useCallback(async (eventID) => {
     dispatch({ type: 'CHECK_REFUND_REQUEST' });
     try {
-      const data = await cancelService.verifyRefundEligibility(txnID);
+      const data = await cancelService.verifyRefundEligibility(eventID);
       dispatch({ type: 'CHECK_REFUND_SUCCESS', payload: data });
       console.log('Refund eligibility data:', data);
       return data;

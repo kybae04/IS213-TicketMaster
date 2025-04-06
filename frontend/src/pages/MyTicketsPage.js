@@ -97,7 +97,7 @@ const MyTicketsPage = () => {
 
   // call the refund-eligibility function, then if eligible, show the cancel modal
   const handleCancelClick = async (txn) => {
-    const result = await checkRefundEligibility(txn.transactionID);
+    const result = await checkRefundEligibility(txn.eventID);
     setTicketToCancel({ ...txn, refundEligible: result.refund_eligibility });
     setShowCancelModal(true);
   };
@@ -160,7 +160,7 @@ const MyTicketsPage = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="flex justify-between items-center mb-4">
