@@ -12,16 +12,16 @@ const myTicketService = {
         }
     },
 
-    getSeatDetails: async (seatID) => {
-        try {
-            const response = await apiClient.get(`/seat/details/${seatID}`)
-            return response.data
-        }
-        catch (error) {
-            console.error('Error fetching seat details:', error)
-            throw error
-        }
-    },
+    // getSeatDetails: async (seatID) => {
+    //     try {
+    //         const response = await apiClient.get(`/seat/details/${seatID}`)
+    //         return response.data
+    //     }
+    //     catch (error) {
+    //         console.error('Error fetching seat details:', error)
+    //         throw error
+    //     }
+    // },
 
     getEventDetails: async (eventID) => {
         try {
