@@ -5,91 +5,33 @@ import { Card } from '../components/ui/card';
 import { useMyTickets } from '../context/myTicketsContext';
 import { useCancel } from '../context/cancelContext';
 
+// Map of artist names to their image filenames
+const artistImageMap = {
+  'Benjamin Kheng': 'benkheng.jpg',
+  'Bruno Mars': 'brunomars.jpg',
+  'Carly Rae Jepsen': 'carly.jpg',
+  'Lady Gaga': 'ladygaga.jpg',
+  'Lauv': 'lauv.png',
+  'Taylor Swift': 'taylorswift.webp',
+  'Yoasobi': 'yoasobi.jpg'
+};
+
+// Image mapping function based on artistImageMap
+const getEventImage = (artistName) => {
+  // Default image in case an artist isn't found in the map
+  const DEFAULT_IMAGE = 'taylorswift.webp';
+  
+  // Get the image filename for this artist
+  const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
+  return `/events/${imageFilename}`;
+};
+
 const MyTicketsPage = () => {
   const navigate = useNavigate();
-  // const [tickets, setTickets] = useState([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [ticketToCancel, setTicketToCancel] = useState(null);
-  // eslint-disable-next-line no-unused-vars
   const { transactions, fetchGroupedTickets, loading, error } = useMyTickets();
   const { checkRefundEligibility, cancelTicket } = useCancel();
-
-
-  // useEffect(() => {
-  //   // Mock fetching tickets data
-  //   const fetchTickets = async () => {
-  //     try {
-
-  //       const mockTickets = [
-  //         {
-  //           ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
-  //           transactionID: 'txn-123456',
-  //           eventID: "1",
-  //           eventTitle: 'Taylor Swift: The Eras Tour',
-  //           eventDate: 'June 15, 2023',
-  //           eventTime: '7:30 PM',
-  //           numTickets: 2,
-  //           // location: 'MetLife Stadium, New Jersey',
-  //           // category: 'VIP',
-  //           // section: 'A',
-  //           // row: '1',
-  //           // seats: ['12', '13'],
-  //           // price: 450.00,
-  //           // purchaseDate: '2023-04-10',
-  //           status: 'confirmed',
-  //           // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-1234-5678',
-  //           eventImage: 'https://source.unsplash.com/random/800x500/?concert',
-  //         },
-  //         {
-  //           ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
-  //           transactionID: 'txn-123456',
-  //           eventID: "2",
-  //           eventTitle: 'Coldplay: Music of the Spheres',
-  //           eventDate: 'August 22, 2023',
-  //           eventTime: '8:00 PM',
-  //           numTickets: 2,
-  //           // location: 'Wembley Stadium, London',
-  //           // category: 'CAT1',
-  //           // section: 'B',
-  //           // row: '5',
-  //           // seats: ['22'],
-  //           // price: 180.00,
-  //           // purchaseDate: '2023-05-15',
-  //           status: 'confirmed',
-  //           // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-8765-4321',
-  //           eventImage: 'https://source.unsplash.com/random/800x500/?music',
-  //         },
-  //         {
-  //           ticketIDs: ['TKT-1234-5678', 'TKT-8765-4321'],
-  //           transactionID: 'txn-123456',
-  //           eventID: "3",
-  //           eventTitle: 'NBA Finals 2023: Game 7',
-  //           eventDate: 'June 18, 2023',
-  //           eventTime: '9:00 PM',
-  //           numTickets: 2,
-  //           // location: 'Madison Square Garden, New York',
-  //           // category: 'CAT2',
-  //           // section: 'Lower Bowl',
-  //           // row: '12',
-  //           // seats: ['5', '6', '7'],
-  //           // price: 350.00,
-  //           // purchaseDate: '2023-05-02',
-  //           status: 'voided',
-  //           // refundAmount: 350.00,
-  //           // refundDate: '2023-05-10',
-  //           // qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-9876-5432',
-  //           eventImage: 'https://source.unsplash.com/random/800x500/?basketball',
-  //         }
-  //       ];
-
-  //       setTickets(mockTickets);
-  //     } catch (error) {
-  //       console.error('Error fetching tickets:', error);
-  //     }
-  //   };
-
-  //   fetchTickets();
-  // }, []);
 
   useEffect(() => {
     fetchGroupedTickets();
@@ -104,18 +46,6 @@ const MyTicketsPage = () => {
 
   const confirmCancellation = async () => {
     try {
-
-      // For demo purposes, update the local state
-      // setTransactions(transactions.map(ticket =>
-      //   ticket.transactionID === ticketToCancel.transactionID
-      //     ? {
-      //       ...ticket,
-      //       status: 'voided'
-      //       // refundAmount: ticket.price,
-      //       // refundDate: new Date().toISOString().split('T')[0]
-      //     }
-      //     : ticket
-      // ));
       const response = await cancelTicket(ticketToCancel.transactionID, ticketToCancel.refundEligible);
 
       setTicketToCancel((prev) => ({
@@ -139,8 +69,7 @@ const MyTicketsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        {/* <LoadingSpinner /> */}
+      <div className="flex justify-center items-center h-[calc(100vh-64px)]">
         <p>Loading your tickets...</p>
       </div>
     );
@@ -148,145 +77,160 @@ const MyTicketsPage = () => {
 
   if (error) {
     return (
-      <div className="p-4 bg-red-100 border border-red-400 rounded mb-4">
-        {/* <ErrorMessage message={error} /> */}
-        <p>Error loading tickets: {error}</p>
-        <button 
-          onClick={fetchGroupedTickets}
-          className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Try Again
-        </button>
+      <div className="container mx-auto px-4 h-[calc(100vh-64px)] flex flex-col justify-start items-center" style={{ paddingTop: '15vh' }}>
+        <div className="max-w-2xl w-full">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white text-center mb-6">My Tickets</h1>
+
+          <div className="p-4 bg-red-100 border border-red-400 rounded mb-4">
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Tickets</h3>
+            <p className="text-red-700 mb-4">{error}</p>
+            
+            <div className="bg-white p-4 rounded border border-red-200 mb-4">
+              <h4 className="font-medium mb-2">Possible Solutions:</h4>
+              <ul className="list-disc list-inside">
+                <li>Ensure you are logged in with a valid account</li>
+                <li>Check that your account has tickets associated with it</li>
+                <li>Try logging out and logging back in</li>
+              </ul>
+            </div>
+            
+            <div className="flex justify-center">
+              <button 
+                onClick={fetchGroupedTickets}
+                className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Single ticket display for a cleaner UI when there's only one ticket
+  const singleTicket = transactions.length === 1 ? transactions[0] : null;
+
   return (
-    <div className="container mx-auto px-4 py-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Tickets</h1>
-        <Button
-          onClick={() => navigate('/')}
-          variant="primary"
-          className="font-bold"
-        >
-          Find More Events
-        </Button>
-      </div>
+    <div className="container mx-auto px-4 h-[calc(100vh-64px)] flex flex-col justify-start items-center" style={{ paddingTop: '15vh' }}>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white text-center mb-6">My Tickets</h1>
 
-      {transactions.length === 0 ? (
-        <div className="text-center py-12 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-          </svg>
-          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No tickets found</h3>
-          <p className="mt-1 text-gray-500 dark:text-gray-400">Browse events and purchase tickets to see them here.</p>
-          <div className="mt-6">
-            <Button
-              onClick={() => navigate('/')}
-              variant="primary"
-              className="font-bold"
-            >
-              Browse Events
-            </Button>
+      <div className="w-full overflow-auto flex justify-center" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+        {transactions.length === 0 ? (
+          <div className="text-center py-12 bg-gray-100 dark:bg-gray-800 rounded-lg max-w-md w-full">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No tickets found</h3>
+            <p className="mt-1 text-gray-500 dark:text-gray-400">Browse events and purchase tickets to see them here.</p>
+            <div className="mt-6">
+              <Button
+                onClick={() => navigate('/')}
+                variant="primary"
+                className="font-bold"
+              >
+                Browse Events
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {transactions.map((ticket) => (
-              <Card key={ticket.id} className={`overflow-hidden ${ticket.status === 'voided' ? 'opacity-70' : ''}`}>
-                <div className="relative h-48">
-                  <img
-                    src={ticket.eventImage}
-                    alt={ticket.eventTitle}
-                    className="w-full h-full object-cover"
-                  />
-                  {ticket.status === 'voided' && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                      <span className="bg-red-600 text-white px-4 py-2 rounded-md font-bold uppercase">
-                        Cancelled
-                      </span>
-                    </div>
-                  )}
+        ) : singleTicket ? (
+          // Single ticket display centered in the page
+          <Card className={`overflow-hidden max-w-md w-full ${singleTicket.status === 'voided' ? 'opacity-70' : ''}`}>
+            <div className="relative h-48">
+              <img
+                src={getEventImage(singleTicket.eventTitle)}
+                alt={singleTicket.eventTitle}
+                className="w-full h-full object-cover"
+              />
+              {singleTicket.status === 'voided' && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <span className="bg-red-600 text-white px-4 py-2 rounded-md font-bold uppercase">
+                    Cancelled
+                  </span>
                 </div>
+              )}
+            </div>
 
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{ticket.eventTitle}</h3>
-                    {/* <span className={`text-xs px-2 py-1 rounded font-medium ${ticket.category === 'VIP' ? 'bg-purple-600 text-white' :
-                        ticket.category === 'CAT1' ? 'bg-red-600 text-white' :
-                          ticket.category === 'CAT2' ? 'bg-blue-600 text-white' :
-                            ticket.category === 'CAT3' ? 'bg-green-600 text-white' :
-                              'bg-gray-600 text-white'
-                      }`}>
-                      {ticket.category}
-                    </span> */}
+            <div className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{singleTicket.eventTitle}</h3>
+              </div>
+
+              <p className="text-gray-600 dark:text-gray-300 text-sm mb-1">
+                {singleTicket.eventDate} at {singleTicket.eventTime}
+              </p>
+
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">Number of Tickets:</span>
+                  <span className="text-gray-900 dark:text-white text-sm font-medium">{singleTicket.numTickets}</span>
+                </div>
+              </div>
+
+              {singleTicket.status === 'voided' ? (
+                <div>
+                  <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded mb-3">
+                    <p className="text-center text-red-700 dark:text-red-400 text-lg font-bold">Refunded</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 font-bold"
+                    variant="default"
+                    onClick={() => handleCancelClick(singleTicket)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
+        ) : (
+          // Multiple tickets display
+          <div className="space-y-6 max-w-5xl w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {transactions.map((ticket) => (
+                <Card key={ticket.id} className={`overflow-hidden ${ticket.status === 'voided' ? 'opacity-70' : ''}`}>
+                  <div className="relative h-48">
+                    <img
+                      src={getEventImage(ticket.eventTitle)}
+                      alt={ticket.eventTitle}
+                      className="w-full h-full object-cover"
+                    />
+                    {ticket.status === 'voided' && (
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <span className="bg-red-600 text-white px-4 py-2 rounded-md font-bold uppercase">
+                          Cancelled
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-1">
-                    {ticket.eventDate} at {ticket.eventTime}
-                  </p>
-                  {/* <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
-                    {ticket.location}
-                  </p> */}
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{ticket.eventTitle}</h3>
+                    </div>
 
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
-                    {/* <div className="flex justify-between mb-1">
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">Section:</span>
-                      <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.section}</span>
-                    </div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">Row:</span>
-                      <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.row}</span>
-                    </div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">Seats:</span>
-                      <span className="text-gray-900 dark:text-white text-sm font-medium">
-                        {ticket.seats.join(', ')}
-                      </span>
-                    </div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">Ticket ID:</span>
-                      <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.id}</span>
-                    </div> */}
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">Number of Tickets:</span>
-                      <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.numTickets}</span> {/* CHANGE LATER, STATIC NOW */}
-                    </div>
-                  </div>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-1">
+                      {ticket.eventDate} at {ticket.eventTime}
+                    </p>
 
-                  {ticket.status === 'voided' ? (
-                    <div>
-                      <div className="flex justify-center mb-3"></div>
-                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded mb-3">
-                        <p className="text-center text-red-700 dark:text-red-400 text-lg font-bold">Refunded</p>
-                        {/* <p className="text-red-700 dark:text-red-400 text-sm font-medium">Cancelled on {ticket.refundDate}</p>
-                      <p className="text-red-700 dark:text-red-400 text-sm">Refund: $100</p>  */}
-                        {/* HARDCODED, can choose to either show or dont show this, if show then need to create new route to get refund amount by transactionID in payment service*/}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Number of Tickets:</span>
+                        <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.numTickets}</span>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex justify-center mb-3">
-                      {/* <img
-                        // src={ticket.qrCode} 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ticket.ticketID}`}
-                        alt="Ticket QR Code"
-                        className="h-32 w-32"
-                      /> */}
-                    </div>
-                  )}
 
-                  <div className="flex gap-2">
-                    {ticket.status === 'confirmed' && (
-                      <>
-                        {/* <Button
-                          className="flex-1 font-bold"
-                          variant="primary"
-                          onClick={() => navigate('/trading', { state: { ticket } })}
-                        >
-                          Trade
-                        </Button> */}
+                    {ticket.status === 'voided' ? (
+                      <div>
+                        <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded mb-3">
+                          <p className="text-center text-red-700 dark:text-red-400 text-lg font-bold">Refunded</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
                         <Button
                           className="flex-1 font-bold"
                           variant="default"
@@ -294,24 +238,15 @@ const MyTicketsPage = () => {
                         >
                           Cancel
                         </Button>
-                      </>
+                      </div>
                     )}
-                    {/* {ticket.status === 'voided' && (
-                      <Button
-                        className="flex-1"
-                        variant="default"
-                        disabled
-                      >
-                        Refunded
-                      </Button>
-                    )} */}
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Cancellation Confirmation Modal */}
       {showCancelModal && (

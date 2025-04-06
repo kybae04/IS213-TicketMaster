@@ -135,7 +135,7 @@ const CancellationSuccessPage = () => {
           <div className="mb-4">
             <div className="flex justify-between mb-1">
               <span className="text-green-200">Refund Amount:</span>
-              <span className="text-white font-bold">${cancelledTicket.refundAmount.toFixed(2)}</span>
+              <span className="text-white font-bold">${cancelledTicket.refundAmount}</span>
             </div>
             <div className="flex justify-between mb-1">
               <span className="text-green-200">Refund Method:</span>

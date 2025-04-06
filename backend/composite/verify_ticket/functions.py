@@ -1,6 +1,9 @@
 import requests
-from atomic import TICKET_SERVICE_URL, EVENT_SERVICE_URL, SEAT_SERVICE_URL
 import logging
+
+EVENT_SERVICE_URL = "https://personal-d3kdunmg.outsystemscloud.com/ESDProject/rest/EventAPI/events"
+TICKET_SERVICE_URL = "http://ticket_service:5005"
+SEAT_SERVICE_URL = "http://seatalloc_service:5000" 
 
 def fetch_ticket(ticket_id):
     """Fetch ticket details from Ticket Atomic Service."""
