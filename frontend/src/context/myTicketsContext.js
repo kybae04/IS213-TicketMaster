@@ -139,10 +139,10 @@ export const MyTicketProvider = ({ children }) => {
   const requestCount = useRef(0);
 
   const fetchGroupedTickets = useCallback(async () => {
-    if (!backendUserId) {
-      console.warn('No backend user ID found, cannot fetch tickets');
-      return;
-    }
+    // if (!backendUserId) {
+    //   console.warn('No backend user ID found, cannot fetch tickets');
+    //   return;
+    // }
     // For debugging
     console.log('fetchGroupedTickets called', ++requestCount.current);
     

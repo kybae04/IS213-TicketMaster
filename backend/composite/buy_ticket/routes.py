@@ -62,7 +62,7 @@ def get_pending_tickets(event_id, category, user_id):
         filtered = []
         for ticket in pending_tickets:
             seat_id = ticket["seatID"]
-            seat_response = requests.get(f"{SEAT_ALLOC_SERVICE_URL}/seat/details/{ticket.seatID}")
+            seat_response = requests.get(f"{SEAT_SERVICE_URL}/seat/details/{seat_id}")
             if seat_response.status_code == 200:
                 seat_data = seat_response.json()
                 if seat_data.get("cat_no") == category:
@@ -94,7 +94,7 @@ def lock(event_id, category):
         return jsonify({"error": "Missing seat category"}), 400
     
     # Step 0: Check for existing pending tickets
-    check_url = f"http://localhost:8000/tickets/pending/{event_id}/{category}/{user_id}"
+    check_url = f"http://localhost:8002/tickets/pending/{event_id}/{category}/{user_id}"
     pending_response = requests.get(check_url)
 
     ticket_ids = []
@@ -159,7 +159,7 @@ def purchase(event_id, category):
         return jsonify({"error": "Missing seat category"}), 400
     
     # Fetch pending tickets
-    pending_url = f"http://localhost:8000/tickets/pending/{event_id}/{category}/{user_id}"
+    pending_url = f"http://localhost:8002/tickets/pending/{event_id}/{category}/{user_id}"
     pending_response = requests.get(pending_url)
 
     if pending_response.status_code != 200:
@@ -231,7 +231,7 @@ def timeout(event_id, category):
         return jsonify({"error": "Missing required fields"}), 400
     
     # Fetch pending tickets from Ticket service
-    check_url = f"http://localhost:8000/tickets/pending/{event_id}/{category}/{user_id}"
+    check_url = f"http://localhost:8002/tickets/pending/{event_id}/{category}/{user_id}"
     pending_response = requests.get(check_url)
 
     if pending_response.status_code != 200:

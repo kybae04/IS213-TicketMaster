@@ -21,6 +21,7 @@ import { EventProvider } from './context/EventContext';
 import { MyTicketProvider } from './context/myTicketsContext';
 import ApiTester from './components/ApiTester';
 import { CancelProvider } from './context/cancelContext';
+import { BuyTicketProvider } from './context/buyTicketContext';
 
 // Force dark mode
 document.documentElement.classList.add('dark');
@@ -33,14 +34,16 @@ function App() {
     <Router>
       <EventProvider>
         <AuthProvider>
-          <MyTicketProvider>
-            <CancelProvider>
-            <div className="App">
-              <AppRoutes />
-              {isDev && <ApiTester />}
-            </div>
-            </CancelProvider>
-          </MyTicketProvider>
+          <BuyTicketProvider>
+            <MyTicketProvider>
+              <CancelProvider>
+                <div className="App">
+                  <AppRoutes />
+                  {isDev && <ApiTester />}
+                </div>
+              </CancelProvider>
+            </MyTicketProvider>
+          </BuyTicketProvider>
         </AuthProvider>
       </EventProvider>
     </Router>
