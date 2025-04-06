@@ -59,6 +59,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -92,6 +93,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -125,6 +127,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -158,6 +161,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -191,6 +195,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -224,6 +229,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -257,6 +263,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -290,6 +297,7 @@ services:
       - name: cors
         config:
           origins:
+            - http://localhost:3000
             - http://localhost:3001
           methods:
             - GET
@@ -315,6 +323,7 @@ routes:
     ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
     methods:
       - POST
+      - OPTIONS
     protocols:
       - http
       - https
@@ -333,6 +342,7 @@ routes:
     regex_priority: 11
     methods:
       - GET
+      - OPTIONS
     protocols:
       - http
       - https
@@ -350,6 +360,7 @@ routes:
     ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
     methods:
       - GET
+      - OPTIONS
     protocols:
       - http
       - https
@@ -367,6 +378,7 @@ routes:
     ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
     methods:
       - GET
+      - OPTIONS
     protocols:
       - http
       - https
@@ -390,6 +402,7 @@ routes:
     preserve_host: false
     methods:
       - PUT
+      - OPTIONS
     updated_at: 1742749224
     tags: ~
     sources: ~
@@ -416,6 +429,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1743269406
     tags: ~
     sources: ~
@@ -442,6 +456,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1743270541
     tags: ~
     sources: ~
@@ -468,6 +483,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1743308681
     tags: ~
     sources: ~
@@ -494,6 +510,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1742746108
     tags: ~
     sources: ~
@@ -520,6 +537,7 @@ routes:
     preserve_host: false
     methods:
       - PUT
+      - OPTIONS
     updated_at: 1742749311
     tags: ~
     sources: ~
@@ -546,6 +564,7 @@ routes:
     preserve_host: false
     methods:
       - PUT
+      - OPTIONS
     updated_at: 1742749834
     tags: ~
     sources: ~
@@ -572,6 +591,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1742751261
     tags: ~
     sources: ~
@@ -598,6 +618,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1742750644
     tags: ~
     sources: ~
@@ -624,6 +645,7 @@ routes:
     preserve_host: false
     methods:
       - PATCH
+      - OPTIONS
     updated_at: 1743274924
     tags: ~
     sources: ~
@@ -650,6 +672,7 @@ routes:
     preserve_host: false
     methods:
       - PUT
+      - OPTIONS
     updated_at: 1743269906
     tags: ~
     sources: ~
@@ -676,6 +699,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1742749898
     tags: ~
     sources: ~
@@ -702,6 +726,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1742752247
     tags: ~
     sources: ~
@@ -728,6 +753,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1743270594
     tags: ~
     sources: ~
@@ -754,6 +780,7 @@ routes:
     preserve_host: false
     methods:
       - PUT
+      - OPTIONS
     updated_at: 1742749294
     tags: ~
     sources: ~
@@ -780,6 +807,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1742752199
     tags: ~
     sources: ~
@@ -806,6 +834,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1743307746
     tags: ~
     sources: ~
@@ -832,6 +861,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1743274824
     tags: ~
     sources: ~
@@ -858,6 +888,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1743274708
     tags: ~
     sources: ~
@@ -884,6 +915,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1742749774
     tags: ~
     sources: ~
@@ -910,6 +942,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1743269987
     tags: ~
     sources: ~
@@ -936,6 +969,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1742749727
     tags: ~
     sources: ~
@@ -962,6 +996,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1743275007
     tags: ~
     sources: ~
@@ -988,6 +1023,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1742748645
     tags: ~
     sources: ~
@@ -1014,6 +1050,7 @@ routes:
     preserve_host: false
     methods:
       - PATCH
+      - OPTIONS
     updated_at: 1743274961
     tags: ~
     sources: ~
@@ -1040,6 +1077,7 @@ routes:
     preserve_host: false
     methods:
       - PUT
+      - OPTIONS
     updated_at: 1742749805
     tags: ~
     sources: ~
@@ -1066,6 +1104,7 @@ routes:
     preserve_host: false
     methods:
       - POST
+      - OPTIONS
     updated_at: 1742750624
     tags: ~
     sources: ~
@@ -1092,6 +1131,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1743275405
     tags: ~
     sources: ~
@@ -1118,6 +1158,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1742749868
     tags: ~
     sources: ~
@@ -1144,6 +1185,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1742751227
     tags: ~
     sources: ~
@@ -1170,6 +1212,7 @@ routes:
     preserve_host: false
     methods:
       - GET
+      - OPTIONS
     updated_at: 1743274882
     tags: ~
     sources: ~
