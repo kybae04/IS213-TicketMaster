@@ -2,11 +2,14 @@ import datetime
 import requests
 from flask import Flask, jsonify
 from flask_cors import CORS
-from services import fetch_ticket, fetch_event, fetch_seat
-from atomic import TICKET_SERVICE_URL, EVENT_SERVICE_URL, SEAT_SERVICE_URL
+from functions import fetch_ticket, fetch_event, fetch_seat
 
 app = Flask(__name__)
 CORS(app)
+
+EVENT_SERVICE_URL = "https://personal-d3kdunmg.outsystemscloud.com/ESDProject/rest/EventAPI/events"
+TICKET_SERVICE_URL = "http://ticket_service:5005"
+SEAT_SERVICE_URL = "http://seatalloc_service:5000" 
 
 @app.route("/verify-ticket/<ticket_id>", methods=["GET"])
 def verify_ticket(ticket_id):
@@ -38,8 +41,20 @@ def verify_ticket(ticket_id):
 
         ### CRITERIA 2: Event date must be at least one day after today ###
 
-        event_date = datetime.datetime.strptime(event["EventResponse"]["EventDate"], "%Y-%m-%d").date()
-        if event_date <= datetime.date.today():
+        # event_date = datetime.datetime.strptime(event["EventResponse"]["EventDate"], "%Y-%m-%d").date()
+        # if event_date <= datetime.date.today():
+        #     return jsonify({"ticket_id": ticket_id, "tradable": False})
+
+        event_date = event["EventResponse"]["EventDate"]  # e.g. "2025-04-08"
+        event_time = event["EventResponse"]["EventTime"]  # e.g. "18:00:00"
+
+        event_datetime = datetime.datetime.strptime(f"{event_date} {event_time}", "%Y-%m-%d %H:%M:%S")
+
+        # Get current datetime
+        now = datetime.datetime.now()
+
+        # Check if the event is at least 48 hours from now
+        if event_datetime <= now + datetime.timedelta(hours=48):
             return jsonify({"ticket_id": ticket_id, "tradable": False})
         
         ### END OF CRITERIA 2 ###
