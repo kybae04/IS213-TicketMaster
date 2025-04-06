@@ -59,7 +59,7 @@ def process_payment():
     # Validate required fields
     required_fields = ['amount', 'currency', 'source','idempotency_key']
     if not all(field in data for field in required_fields):
-        return jsonify({"error": "Missing required fields"}), 400
+        return jsonify({"error": "Missing required fields. Required fields:", required_fields}), 400
 
     # Generate transactionID
     transaction_id = generate_transaction_id()
@@ -172,7 +172,7 @@ def process_refund():
     data = request.get_json()
     
     if 'stripeID' not in data and 'idempotency_key' not in data:
-        return jsonify({"error": "Missing stripeID"}), 400
+        return jsonify({"error": "Missing stripeID or idempotency_key"}), 400
 
     # Generate or use provided idempotency key for refund
     # idempotencyKey = str(uuid.uuid4())
