@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import eventService from '../services/eventService';
+import { useBuyTicket } from '../context/buyTicketContext';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 
 const EventDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { getAvailabilityByCat } = useBuyTicket();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -19,10 +21,10 @@ const EventDetailsPage = () => {
       try {
         // Temporary placeholder availableSeats until inventory microservice is integrated
         const placeholderAvailableSeats = [
-          { area: "VIP", quantity: 20 },
-          { area: "CAT1", quantity: 50 },
-          { area: "CAT2", quantity: 100 },
-          { area: "CAT3", quantity: 200 }
+          { area: "vip", quantity: 20 },
+          { area: "cat_1", quantity: 50 },
+          { area: "cat_2", quantity: 100 },
+          { area: "cat_3", quantity: 200 }
         ];
         
         console.log(`Fetching event with ID: ${id}`);
@@ -41,9 +43,11 @@ const EventDetailsPage = () => {
           throw new Error('Event not found');
         }
         
-        // Add placeholder availableSeats data to the event object
-        // This will be replaced with real data from inventory microservice
-        eventData.availableSeats = placeholderAvailableSeats;
+        const availability = await getAvailabilityByCat(id);
+        console.log('Fetched availability data:', availability);
+        
+        // eventData.availableSeats = placeholderAvailableSeats;
+        eventData.availableSeats = availability
         
         setEvent(eventData);
       } catch (error) {
@@ -140,8 +144,8 @@ const EventDetailsPage = () => {
   
   // Define categories for display - using the categories from the API data if available
   const categories = event.rawCategoryData 
-    ? ['VIP', 'CAT1', 'CAT2', 'CAT3'] // Use our standard category names for display
-    : ['VIP', 'CAT1', 'CAT2', 'CAT3']; // Fallback to standard categories
+    ? ['vip', 'cat_1', 'cat_2', 'cat_3'] // Use our standard category names for display
+    : ['vip', 'cat_1', 'cat_2', 'cat_3']; // Fallback to standard categories
   
   return (
     <>
@@ -205,16 +209,16 @@ const EventDetailsPage = () => {
             >
               <div className="flex flex-col items-center gap-1">
                 <div className={`w-10 h-10 rounded-full border-2 ${
-                  category === 'VIP' ? 'border-purple-500' : 
-                  category === 'CAT1' ? 'border-red-500' : 
-                  category === 'CAT2' ? 'border-blue-500' : 
+                  category === 'vip' ? 'border-purple-500' : 
+                  category === 'cat_1' ? 'border-red-500' : 
+                  category === 'cat_2' ? 'border-blue-500' : 
                   'border-green-500'
                 } flex items-center justify-center`}>
                   <div className={`w-6 h-6 rounded-full ${
                     selectedCategory === category ? 
-                    (category === 'VIP' ? 'bg-purple-500' : 
-                    category === 'CAT1' ? 'bg-red-500' : 
-                    category === 'CAT2' ? 'bg-blue-500' : 
+                    (category === 'vip' ? 'bg-purple-500' : 
+                    category === 'cat_1' ? 'bg-red-500' : 
+                    category === 'cat_2' ? 'bg-blue-500' : 
                     'bg-green-500') : 'bg-transparent'
                   }`}></div>
                 </div>
@@ -222,9 +226,9 @@ const EventDetailsPage = () => {
                   className={`p-4 w-40 cursor-pointer text-center ${
                   selectedCategory === category 
                     ? `bg-gray-700 border-2 ${
-                        category === 'VIP' ? 'border-purple-500' : 
-                        category === 'CAT1' ? 'border-red-500' : 
-                        category === 'CAT2' ? 'border-blue-500' : 
+                        category === 'vip' ? 'border-purple-500' : 
+                        category === 'cat_1' ? 'border-red-500' : 
+                        category === 'cat_2' ? 'border-blue-500' : 
                         'border-green-500'
                       }`
                     : 'bg-gray-800 border border-gray-700'
@@ -232,9 +236,9 @@ const EventDetailsPage = () => {
                 >
                   <div className="uppercase font-bold text-white text-center">{category}</div>
                   <div className={`font-bold text-center ${
-                    category === 'VIP' ? 'text-purple-400' : 
-                    category === 'CAT1' ? 'text-red-400' : 
-                    category === 'CAT2' ? 'text-blue-400' : 
+                    category === 'vip' ? 'text-purple-400' : 
+                    category === 'cat_1' ? 'text-red-400' : 
+                    category === 'cat_2' ? 'text-blue-400' : 
                     'text-green-400'
                   }`}>${event.price[category]}.00</div>
                 </div>
@@ -254,41 +258,41 @@ const EventDetailsPage = () => {
               {/* Cat3 - outermost arc */}
               <path
                 d="M 10,320 A 290,290 0 0 1 590,320"
-                fill={selectedCategory === 'CAT3' ? 'rgba(34, 197, 94, 0.8)' : 'transparent'}
+                fill={selectedCategory === 'cat_3' ? 'rgba(34, 197, 94, 0.8)' : 'transparent'}
                 stroke="#4338ca"
                 strokeWidth="2"
                 style={{ cursor: 'pointer' }}
-                onClick={() => handleCategorySelect('CAT3')}
+                onClick={() => handleCategorySelect('cat_3')}
               />
               
               {/* Cat2 */}
               <path
                 d="M 80,320 A 220,220 0 0 1 520,320"
-                fill={selectedCategory === 'CAT2' ? 'rgba(37, 99, 235, 0.8)' : 'black'}
+                fill={selectedCategory === 'cat_2' ? 'rgba(37, 99, 235, 0.8)' : 'black'}
                 stroke="#4338ca"
                 strokeWidth="2"
                 style={{ cursor: 'pointer' }}
-                onClick={() => handleCategorySelect('CAT2')}
+                onClick={() => handleCategorySelect('cat_2')}
               />
               
               {/* Cat1 */}
               <path
                 d="M 150,320 A 150,150 0 0 1 450,320"
-                fill={selectedCategory === 'CAT1' ? 'rgba(220, 38, 38, 0.8)' : 'black'}
+                fill={selectedCategory === 'cat_1' ? 'rgba(220, 38, 38, 0.8)' : 'black'}
                 stroke="#4338ca"
                 strokeWidth="2"
                 style={{ cursor: 'pointer' }}
-                onClick={() => handleCategorySelect('CAT1')}
+                onClick={() => handleCategorySelect('cat_1')}
               />
               
               {/* VIP - innermost arc before stage */}
               <path
                 d="M 215,320 A 85,85 0 0 1 385,320"
-                fill={selectedCategory === 'VIP' ? 'rgba(147, 51, 234, 0.8)' : 'black'}
+                fill={selectedCategory === 'vip' ? 'rgba(147, 51, 234, 0.8)' : 'black'}
                 stroke="#4338ca"
                 strokeWidth="2"
                 style={{ cursor: 'pointer' }}
-                onClick={() => handleCategorySelect('VIP')}
+                onClick={() => handleCategorySelect('vip')}
               />
               
               {/* Stage - Always black */}
