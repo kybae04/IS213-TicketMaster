@@ -142,6 +142,18 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Error retrieving tickets: {str(e)}")
             return jsonify({"error": "Failed to retrieve tickets"}), 500
+    
+    # Get Tickets by EventID
+    @app.route("/tickets/event/<event_id>", methods=["GET"])
+    def get_tickets_by_event(event_id):
+        try:
+            tickets = Ticket.query.filter_by(eventID=event_id).all()
+            if tickets == []:
+                return jsonify({"error": "Event ID does not exist"}), 404
+            return jsonify([ticket.to_dict() for ticket in tickets]), 200
+        except Exception as e:
+            logger.error(f"Error retrieving tickets: {str(e)}")
+            return jsonify({"error": "Failed to retrieve tickets"}), 500
 
     # Get Tickets by User ID
     @app.route('/tickets/user/<user_id>', methods=['GET'])
@@ -204,6 +216,31 @@ def register_routes(app):
             db.session.rollback()
             logger.error(f"Error voiding ticket: {str(e)}")
             return jsonify({"error": "Failed to void ticket"}), 500
+    
+    # Function to allow user to list the ticket for trade
+    @app.route("/ticket/<ticket_id>/list-for-trade", methods=["PUT"])
+    def list_for_trade(ticket_id):
+        try:
+            data = request.get_json()
+            list_status = data.get("listed_for_trade")
+
+            if list_status is None:
+                return jsonify({"error": "Missing 'listed_for_trade' in request body"}), 400
+            
+            ticket = Ticket.query.filter_by(ticketID=ticket_id).first()
+            if not ticket:
+                return jsonify({"error": f"Ticket {ticket_id} not found"}), 404
+            
+            ticket.listed_for_trade = bool(list_status)
+            db.session.commit()
+
+            return jsonify({
+                "message": f"Ticket {ticket_id} listing status updated",
+                "listed_for_trade": ticket.listed_for_trade
+            }), 200
+        
+        except Exception as e:
+            return jsonify({"error": f"Server error: {str(e)}"}), 500
 
     # Function to get trade request details from Trade Ticket Service
     def get_trade_request_details(tradeRequestID):

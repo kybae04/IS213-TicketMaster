@@ -56,6 +56,30 @@ def publish_to_rabbitmq(queue_name, message):
     except Exception as e:
         print(f"Error publishing to RabbitMQ: {str(e)}")
         return False
+
+# Function to get all tickets that are listed for trade for a specific event and matches the category
+@app.route("/tickets/up-for-trade/<event_id>/<category>", methods=["GET"])
+def get_tradeable_tickets(event_id, category):
+    # Step 1: Get all tickets from Ticket Service for this event where listed_for_trade=True
+    ticket_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/event/{event_id}")
+    if ticket_response.status_code != 200:
+        return jsonify({"error": "Failed to retrieve event tickets"}), 500
+
+    all_tickets = ticket_response.json()
+    listed_tickets = [t for t in all_tickets if t.get("listed_for_trade") == True]
+
+    # Step 2: Validate the seat category of each ticket via Seat Service
+    matching_tickets = []
+    for ticket in listed_tickets:
+        seat_id = ticket["seatID"]
+        seat_resp = requests.get(f"{SEAT_SERVICE_URL}/seat/details/{seat_id}")
+        if seat_resp.status_code == 200:
+            seat_data = seat_resp.json()
+            if seat_data.get("cat_no") == category:
+                matching_tickets.append(ticket)
+
+    return jsonify(matching_tickets), 200
+
 # (1-4) Send trade request (User 1 initiates trade)
 # Update the create_trade_request function
 
