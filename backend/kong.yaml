@@ -55,6 +55,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: seatalloc_service
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
   - port: 443
     write_timeout: 60000
     path: /ESDProject/rest/EventAPI
@@ -74,6 +88,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: personal-d3kdunmg.outsystemscloud.com
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
   - port: 5005
     write_timeout: 60000
     path: ~
@@ -93,6 +121,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: ticket_service
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
   - port: 6001
     write_timeout: 60000
     path: ~
@@ -112,6 +154,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: cancel_ticket_service
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
   - port: 8003
     write_timeout: 60000
     path: ~
@@ -131,6 +187,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: trade_ticket_service
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
   - port: 5001
     write_timeout: 60000
     path: ~
@@ -150,6 +220,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: payment_service
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
   - port: 8002
     write_timeout: 60000
     path: ~
@@ -169,6 +253,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: buy_ticket_service
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
   - port: 6002
     write_timeout: 60000
     path: ~
@@ -188,6 +286,20 @@ services:
     tags: ~
     ca_certificates: ~
     host: verify_ticket_service
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3001
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Content-Type
+            - Authorization
+          credentials: true
 routes:
   - hosts: ~
     request_buffering: true
@@ -227,7 +339,7 @@ routes:
   - hosts: ~
     request_buffering: true
     response_buffering: true
-    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
+    service: b2e36429-5f7b-4b18-982a-ffb33c110c75
     headers: ~
     strip_path: false
     paths:

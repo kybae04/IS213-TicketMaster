@@ -19,7 +19,6 @@ def create_app():
     app.config.from_object(Config) # Load configurations
     db.init_app(app) # Initialise the database
     CORS(app) # Enable CORS for all routes
-    SEAT_ALLOC_URL = app.config["SEAT_ALLOC_SERVICE_URL"]
     
     # Import routes after app is initialised
     from routes import register_routes

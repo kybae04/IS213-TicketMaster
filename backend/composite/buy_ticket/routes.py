@@ -39,6 +39,50 @@ def check_category_availability(event_id, category):
         "count": len(filtered)
     }), 200
 
+# Get all tickets for user and event with pending_payment status
+@app.route('/tickets/pending/<event_id>/<category>/<user_id>', methods=['GET'])
+def get_pending_tickets(event_id, category, user_id):
+    try:
+        # Step 1: Fetch ALL tickets from Ticket Service
+        ticket_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/user/{user_id}")
+        if ticket_response.status_code != 200:
+            return jsonify({"error": "Failed to retrieve user tickets"}), 500
+        
+        user_tickets = ticket_response.json()  # [{ticketID, eventID, seatID, userID, status}, ...]
+
+        # Step 2: Filter for pending tickets for the given event
+        pending_tickets = [
+            t for t in user_tickets
+            if t.get("eventID") == event_id and t.get("status") == "pending_payment"
+        ]
+
+        if not pending_tickets:
+            return jsonify({"ticket_ids": [], "seat_ids": []}), 404
+
+        filtered = []
+        for ticket in pending_tickets:
+            seat_id = ticket["seatID"]
+            seat_response = requests.get(f"{SEAT_ALLOC_SERVICE_URL}/seat/details/{ticket.seatID}")
+            if seat_response.status_code == 200:
+                seat_data = seat_response.json()
+                if seat_data.get("cat_no") == category:
+                    filtered.append({
+                        "ticketID": ticket["ticketID"],
+                        "seatID": ticket["seatID"]
+                    })
+
+        if not filtered:
+            return jsonify({"ticket_ids": [], "seat_ids": []}), 404
+        
+        return jsonify({
+            "ticket_ids": [t["ticketID"] for t in filtered],
+            "seat_ids": [t["seatID"] for t in filtered]
+        }), 200
+
+    except Exception as e:
+        print(f"Error retrieving pending tickets: {str(e)}")
+        return jsonify({"error": "Failed to retrieve pending tickets"}), 500
+
 # Reserve seat and creates pending ticket (no payment yet)
 @app.route("/lock/<event_id>/<category>", methods=["POST"])
 def lock(event_id, category):
@@ -50,7 +94,7 @@ def lock(event_id, category):
         return jsonify({"error": "Missing seat category"}), 400
     
     # Step 0: Check for existing pending tickets
-    check_url = f"{TICKET_SERVICE_URL}/tickets/pending/{event_id}/{category}/{user_id}"
+    check_url = f"http://localhost:8000/tickets/pending/{event_id}/{category}/{user_id}"
     pending_response = requests.get(check_url)
 
     ticket_ids = []
@@ -115,7 +159,7 @@ def purchase(event_id, category):
         return jsonify({"error": "Missing seat category"}), 400
     
     # Fetch pending tickets
-    pending_url = f"{TICKET_SERVICE_URL}/tickets/pending/{event_id}/{category}/{user_id}"
+    pending_url = f"http://localhost:8000/tickets/pending/{event_id}/{category}/{user_id}"
     pending_response = requests.get(pending_url)
 
     if pending_response.status_code != 200:
@@ -141,7 +185,7 @@ def purchase(event_id, category):
         return jsonify({"error": f"Invalid category '{category}'"}), 400
     
     # Convert to cents
-    total_amount = int(price * quantity * 100)  # cents
+    total_amount = int(price * quantity)
 
     # Step 2: Call Payment API
     payment_data = {
@@ -187,7 +231,7 @@ def timeout(event_id, category):
         return jsonify({"error": "Missing required fields"}), 400
     
     # Fetch pending tickets from Ticket service
-    check_url = f"{TICKET_SERVICE_URL}/tickets/pending/{event_id}/{category}/{user_id}"
+    check_url = f"http://localhost:8000/tickets/pending/{event_id}/{category}/{user_id}"
     pending_response = requests.get(check_url)
 
     if pending_response.status_code != 200:
