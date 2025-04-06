@@ -6,7 +6,6 @@ services:
       - "8501:5005"
     environment:
       - dbURL=${TICKET_DB_URL}
-      - SEAT_ALLOC_SERVICE_URL=${SEAT_ALLOC_SERVICE_URL}
     env_file:
       - .env
     networks:
@@ -118,6 +117,7 @@ services:
 
 networks:
   ticketmaster_network:
+    name: ticketmaster_network
     driver: bridge
 
 volumes:
