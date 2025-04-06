@@ -20,12 +20,12 @@ const EventDetailsPage = () => {
     const fetchEvent = async () => {
       try {
         // Temporary placeholder availableSeats until inventory microservice is integrated
-        const placeholderAvailableSeats = [
-          { area: "vip", quantity: 20 },
-          { area: "cat_1", quantity: 50 },
-          { area: "cat_2", quantity: 100 },
-          { area: "cat_3", quantity: 200 }
-        ];
+        // const placeholderAvailableSeats = [
+        //   { area: "vip", quantity: 20 },
+        //   { area: "cat_1", quantity: 50 },
+        //   { area: "cat_2", quantity: 100 },
+        //   { area: "cat_3", quantity: 200 }
+        // ];
         
         console.log(`Fetching event with ID: ${id}`);
         const eventData = await eventService.getEventById(id);
@@ -58,7 +58,7 @@ const EventDetailsPage = () => {
     };
     
     fetchEvent();
-  }, [id]);
+  }, [id, getAvailabilityByCat]);
   
   // Handle seat selection
   const handleCategorySelect = (category) => {

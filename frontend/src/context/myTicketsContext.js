@@ -52,23 +52,7 @@ export const MyTicketProvider = ({ children }) => {
   // For debugging
   const requestCount = useRef(0);
 
-  // Debug logging for auth context values
-  useEffect(() => {
-    console.log('Auth context in MyTicketsContext:', { 
-      backendUserId, 
-      userEmail: user?.email,
-      userID: user?.id,
-      authLoading
-    });
-    
-    // If backendUserId changes, re-fetch tickets
-    if (backendUserId && backendUserId !== lastUsedUserIdRef.current) {
-      console.log(`Backend user ID changed from ${lastUsedUserIdRef.current} to ${backendUserId}. Re-fetching tickets.`);
-      lastUsedUserIdRef.current = backendUserId;
-      fetchGroupedTickets();
-    }
-  }, [backendUserId, user, authLoading]);
-
+  // Function to fetch and group tickets
   const fetchGroupedTickets = useCallback(async () => {
     // For debugging
     console.log('fetchGroupedTickets called', ++requestCount.current);
@@ -154,6 +138,25 @@ export const MyTicketProvider = ({ children }) => {
       });
     }
   }, [backendUserId, user]);
+
+
+    // Debug logging for auth context values
+    useEffect(() => {
+      console.log('Auth context in MyTicketsContext:', { 
+        backendUserId, 
+        userEmail: user?.email,
+        userID: user?.id,
+        authLoading
+      });
+      
+      // If backendUserId changes, re-fetch tickets
+      if (backendUserId && backendUserId !== lastUsedUserIdRef.current) {
+        console.log(`Backend user ID changed from ${lastUsedUserIdRef.current} to ${backendUserId}. Re-fetching tickets.`);
+        lastUsedUserIdRef.current = backendUserId;
+        fetchGroupedTickets();
+      }
+    }, [backendUserId, user, authLoading, fetchGroupedTickets]);
+
 
   // For debugging - log state changes
   useEffect(() => {
