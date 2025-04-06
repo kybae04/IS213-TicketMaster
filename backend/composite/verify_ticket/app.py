@@ -34,7 +34,7 @@ def verify_ticket(ticket_id):
         ### CRITERIA 1: Ticket must be confirmed ###
 
         if ticket["status"] != "confirmed":
-            return jsonify({"ticket_id": ticket_id, "tradable": False})
+            return jsonify({"ticket_id": ticket_id, "tradable": False, "reason": "Ticket is not confirmed"})
         
         ### END OF CRITERIA 1 ###
 
@@ -55,7 +55,7 @@ def verify_ticket(ticket_id):
 
         # Check if the event is at least 48 hours from now
         if event_datetime <= now + datetime.timedelta(hours=48):
-            return jsonify({"ticket_id": ticket_id, "tradable": False})
+            return jsonify({"ticket_id": ticket_id, "tradable": False, "reason": "Event is less than 48 hours away"})
         
         ### END OF CRITERIA 2 ###
 
@@ -72,7 +72,7 @@ def verify_ticket(ticket_id):
         
         # If seat is not valid, ticket is not tradable
         if not seat_data.get("valid", False):
-            return jsonify({"ticket_id": ticket_id, "tradable": False})
+            return jsonify({"ticket_id": ticket_id, "tradable": False, "reason": "Seat is not valid for trade"})
         
         ### END OF CRITERIA 3 ###
 
