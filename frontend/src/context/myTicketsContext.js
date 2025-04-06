@@ -133,22 +133,26 @@ const myTicketReducer = (state, action) => {
 
 export const MyTicketProvider = ({ children }) => {
   const [state, dispatch] = useReducer(myTicketReducer, initialState);
+  // const { backendUserId, loading: authLoading } = useAuth();
+
   // For debugging
   const requestCount = useRef(0);
 
   const fetchGroupedTickets = useCallback(async () => {
+    if (!backendUserId) {
+      console.warn('No backend user ID found, cannot fetch tickets');
+      return;
+    }
     // For debugging
     console.log('fetchGroupedTickets called', ++requestCount.current);
     
     dispatch({ type: 'FETCH_TICKETS_REQUEST' });
     
     try {
-      // const { user } = useAuth();
-      // const userID = user ? user.id : null;
-      const userID = "user_013"; // Replace with actual user ID
+      const backendUserId = "user_122"; // Replace with actual user ID
 
-      console.log('Fetching tickets for user:', userID);
-      const rawTickets = await myTicketService.getMyTickets(userID);
+      console.log('Fetching tickets for user:', backendUserId);
+      const rawTickets = await myTicketService.getMyTickets(backendUserId);
       console.log('Raw tickets received:', rawTickets);
       
       if (!rawTickets || !Array.isArray(rawTickets) || rawTickets.length === 0) {
