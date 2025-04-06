@@ -15,7 +15,7 @@ SEAT_SERVICE_URL = "http://seatalloc_service:5000"
 TICKET_SERVICE_URL = "http://ticket_service:5005"
 EVENT_SERVICE_URL = "https://personal-d3kdunmg.outsystemscloud.com/ESDProject/rest/"
 
-
+logging.basicConfig(level=logging.DEBUG)
 
 @app.route('/refund-eligibility/<event_id>', methods=['GET'])
 def refund_eligibility(event_id):
@@ -30,13 +30,37 @@ def refund_eligibility(event_id):
     # # event_id = 5 ### HARDCODED, CHANGE LATER
     # logging.debug("Event ID:", event_id)
 
+    # Step 1: Get all tickets for this user + event (assumes userID is passed in query params)
+    user_id = request.args.get("userID")
+    if not user_id:
+        return jsonify({"error": "Missing userID in query params"}), 400
+
+    ticket_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/user/{user_id}")
+    if ticket_response.status_code != 200:
+        return jsonify({"error": "Failed to retrieve user tickets"}), 500
+
+    tickets = ticket_response.json()
+    event_tickets = [t for t in tickets if str(t["eventID"]) == str(event_id) and t["transactionID"] is not None]
+
+    logging.debug("Filtered (event) tickets: %s", event_tickets)
+
+    # Check if any ticket is listed for trade or involved in a trade
+    for ticket in event_tickets:
+        listed_status = ticket.get("listed_for_trade")
+        # Convert to lowercase string and check if it's "true" or True boolean
+        if (isinstance(listed_status, str) and listed_status.lower() == "true") or listed_status is True:
+            return jsonify({
+                "message": "Refund not possible — some tickets are involved in a trade.",
+                "refund_eligibility": False
+            }), 200
+
     # Step 2: Get event date
     event_response = requests.get(f"{EVENT_SERVICE_URL}EventAPI/events/{event_id}")
     if event_response.status_code != 200:
         return jsonify({"error": "Failed to retrieve event details"}), 500
     event_data = event_response.json()
     event_date = event_data["EventResponse"]["EventDate"]
-    logging.debug("Event Date:", event_date)
+    logging.debug("Event Date: %s", event_date)
 
     # Check if refund is possible
     current_date = datetime.now()
@@ -47,7 +71,6 @@ def refund_eligibility(event_id):
         return jsonify({"message": "Full refund is possible", "refund_eligibility": True}), 200
     else:
         return jsonify({"message": "Refund not possible", "refund_eligibility": False}), 200
-
 
 # Confirm transaction cancellation after checking refund validity
 '''
@@ -72,6 +95,13 @@ def cancel_transaction(transaction_id):
         return jsonify({"error": "Failed to retrieve tickets", "statuscode": ticket_response.status_code}), 500
     
     tickets = ticket_response.json()
+
+    # Step 2: Prevent cancellation if any ticket is involved in trading
+    for ticket in tickets:
+        if ticket.get("listed_for_trade") == True or ticket.get("tradeRequestID") is not None:
+            return jsonify({
+                "error": "Cannot cancel transaction. One or more tickets are currently listed for trade or involved in a trade."
+            }), 403
 
     # Step 3,4: Void ticket and get response
     for ticket in tickets:
