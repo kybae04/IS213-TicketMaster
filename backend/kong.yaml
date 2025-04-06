@@ -312,6 +312,60 @@ routes:
   - hosts: ~
     request_buffering: true
     response_buffering: true
+    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/tickets/event/(?<event_id>[^/]+)
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-ticket-by-event-id
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 9fd8ddbc-9615-4c71-b72b-d4b015051898
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/tickets/up-for-trade/(?<event_id>[^/]+)/(?<category>[^/]+)
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-tradable-tickets
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/ticket/(?<ticketID>[^/]+)/list-for-trade
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: list-ticket-for-trade
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - PUT
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
     service: b2e36429-5f7b-4b18-982a-ffb33c110c75
     headers: ~
     strip_path: false
