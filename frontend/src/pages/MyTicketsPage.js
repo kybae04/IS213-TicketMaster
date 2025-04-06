@@ -120,7 +120,7 @@ const MyTicketsPage = () => {
 
       setTicketToCancel((prev) => ({
         ...prev,
-        price: response.amount_refunded / 100
+        price: response.amount_refunded
       }))
 
       await fetchGroupedTickets();
@@ -137,6 +137,30 @@ const MyTicketsPage = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        {/* <LoadingSpinner /> */}
+        <p>Loading your tickets...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-100 border border-red-400 rounded mb-4">
+        {/* <ErrorMessage message={error} /> */}
+        <p>Error loading tickets: {error}</p>
+        <button 
+          onClick={fetchGroupedTickets}
+          className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+  
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="flex justify-between items-center mb-4">
