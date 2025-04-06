@@ -18,7 +18,15 @@ export function AuthProvider({ children }) {
     }
     
     try {
+      console.log("Attempting to fetch backend user ID for:", userData.id);
       const backendId = await getBackendUserId(userData);
+      
+      if (!backendId) {
+        console.error("No backend user ID found for user:", userData.email);
+        setBackendUserId(null);
+        return;
+      }
+      
       setBackendUserId(backendId);
       console.log("Backend User ID set:", backendId);
     } catch (error) {
@@ -129,6 +137,57 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Function to refresh the backend user ID mapping
+  const refreshUserMapping = async () => {
+    if (!user) {
+      console.warn("Cannot refresh user mapping: No user is logged in");
+      return null;
+    }
+    
+    try {
+      console.log("Forcing refresh of backend user ID mapping for user:", user.id);
+      
+      // Query the latest mapping directly from the database
+      const { data, error } = await supabase
+        .from('user_mapping')
+        .select('backend_user_id')
+        .eq('supabase_uid', user.id)
+        .single();
+        
+      if (error) {
+        console.error("Error fetching user mapping during refresh:", error);
+        return null;
+      }
+      
+      if (!data || !data.backend_user_id) {
+        console.error("No mapping found for user:", user.id);
+        return null;
+      }
+      
+      const correctBackendId = data.backend_user_id;
+      console.log("Found correct backend user ID:", correctBackendId);
+      
+      // Always update the metadata, regardless of current value
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { backend_user_id: correctBackendId }
+      });
+      
+      if (updateError) {
+        console.error("Failed to update user metadata during refresh:", updateError);
+      } else {
+        console.log("Successfully updated user metadata during refresh");
+      }
+      
+      // Update the state
+      setBackendUserId(correctBackendId);
+      
+      return correctBackendId;
+    } catch (error) {
+      console.error("Error refreshing user mapping:", error);
+      return null;
+    }
+  };
+
   // Make auth state available to consumers
   const value = {
     user,
@@ -137,7 +196,8 @@ export function AuthProvider({ children }) {
     login,
     logout,
     isAuthenticated: !!user,
-    checkAuthState
+    checkAuthState,
+    refreshUserMapping
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
