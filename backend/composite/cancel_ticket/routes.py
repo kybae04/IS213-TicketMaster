@@ -98,7 +98,8 @@ def cancel_transaction(transaction_id):
 
     # Step 2: Prevent cancellation if any ticket is involved in trading
     for ticket in tickets:
-        if ticket.get("listed_for_trade") == True or ticket.get("tradeRequestID") is not None:
+        listed = ticket.get("listed_for_trade")
+        if listed is True or (isinstance(listed, str) and listed.lower() == "true"):
             return jsonify({
                 "error": "Cannot cancel transaction. One or more tickets are currently listed for trade or involved in a trade."
             }), 403
