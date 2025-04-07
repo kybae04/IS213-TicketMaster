@@ -697,6 +697,7 @@ def cancel_trade_request():
         print(f"Unexpected error in cancel_trade_request: {str(e)}")
         traceback.print_exc()
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
 @app.route('/trade-status/<ticket_id>', methods=['GET'])
 def get_ticket_trade_status(ticket_id):
     """Get the trade status of a ticket"""

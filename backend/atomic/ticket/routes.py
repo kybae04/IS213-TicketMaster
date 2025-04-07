@@ -132,10 +132,10 @@ def register_routes(app):
             return jsonify({"error": "Failed to retrieve ticket"}), 500
     
     # Get Tickets by Transaction ID
-    @app.route('/tickets/transaction/<transaction_id>', methods=['GET'])
-    def get_tickets_by_transaction(transaction_id):
+    @app.route('/tickets/transaction/<transactionID>', methods=['GET'])
+    def get_tickets_by_transaction(transactionID):
         try:
-            tickets = Ticket.query.filter_by(transactionID=transaction_id).all()
+            tickets = Ticket.query.filter_by(transactionID=transactionID).all()
             if tickets == []:
                 return jsonify({"error": "Transaction ID does not exist"}), 404
             return jsonify([ticket.to_dict() for ticket in tickets]), 200
@@ -396,7 +396,7 @@ def register_routes(app):
             return jsonify({"error": f"Failed to process trade request: {str(e)}"}), 500
 
     # Set Trade Request ID on a ticket
-    @app.route('/ticket/<ticketID>/set-trade-id', methods=['POST'])
+    @app.route('/ticket/<ticketID>/set_trade_id', methods=['POST'])
     def set_trade_request_id(ticketID):
         """
         Set the trade request ID on a ticket
