@@ -39,6 +39,7 @@ def verify_ticket(ticket_id):
         ### END OF CRITERIA 1 ###
 
 
+
         ### CRITERIA 2: Event must be at least 48 hours from now ###
 
         event_date = event["EventResponse"]["EventDate"]  # e.g. "2025-04-08"
