@@ -1,3 +1,4 @@
+from sqlalchemy import Boolean
 from db import db
 
 # Ticket Model
@@ -9,6 +10,8 @@ class Ticket(db.Model):
     status = db.Column(db.String(20), nullable=False, default="pending_payment")
     transactionID = db.Column(db.String(64), nullable=True) 
     tradeRequestID = db.Column(db.String(64), nullable=True)  # Associated trade request ID
+    listed_for_trade = db.Column(Boolean, nullable=False, default=False)
+
 
     def to_dict(self):
         return {
@@ -18,5 +21,6 @@ class Ticket(db.Model):
             "status": self.status,
             "tradeRequestID": self.tradeRequestID,
             "transactionID": self.transactionID,
-            "userID": self.userID
+            "userID": self.userID,
+            "listed_for_trade": self.listed_for_trade
         }

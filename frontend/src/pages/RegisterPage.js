@@ -49,7 +49,7 @@ function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4 h-[calc(100vh-64px)] flex flex-col justify-start items-center" style={{ paddingTop: '15vh' }}>
         <div className="max-w-md w-full space-y-8 bg-gray-800 p-8 rounded-lg shadow-lg">
           <div className="text-center">
             <h2 className="text-3xl font-extrabold text-white mb-2">Registration Successful!</h2>
@@ -68,7 +68,7 @@ function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="container mx-auto px-4 h-[calc(100vh-64px)] flex flex-col justify-start items-center" style={{ paddingTop: '15vh' }}>
       <div className="max-w-md w-full space-y-8 bg-gray-800 p-8 rounded-lg shadow-lg">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
