@@ -39,11 +39,7 @@ def verify_ticket(ticket_id):
         ### END OF CRITERIA 1 ###
 
 
-        ### CRITERIA 2: Event date must be at least one day after today ###
-
-        # event_date = datetime.datetime.strptime(event["EventResponse"]["EventDate"], "%Y-%m-%d").date()
-        # if event_date <= datetime.date.today():
-        #     return jsonify({"ticket_id": ticket_id, "tradable": False})
+        ### CRITERIA 2: Event date must be at least 48h from today ###
 
         event_date = event["EventResponse"]["EventDate"]  # e.g. "2025-04-08"
         event_time = event["EventResponse"]["EventTime"]  # e.g. "18:00:00"
