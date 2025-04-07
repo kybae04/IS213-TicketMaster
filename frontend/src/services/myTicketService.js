@@ -78,12 +78,57 @@ const myTicketService = {
     // Get tickets available for trade for a specific event and category
     getTradeableTickets: async (eventID, category) => {
         try {
-            const response = await apiClient.get(`/tickets/up-for-trade/${eventID}/${category}`)
-            return response.data
-        }
+            console.log(`Fetching tradeable tickets for event ${eventID} and category ${category}`);
+            // First try the specific endpoint for tradeable tickets
+            let response = await apiClient.get(`/tickets/up-for-trade/${eventID}/${category}`);
+            console.log('API response for tradeable tickets:', response.data);
+            
+            // If no tickets returned or empty array, try a fallback approach
+            if (!response.data || response.data.length === 0) {
+                console.log('No tickets found via up-for-trade endpoint, trying fallback approach');
+                
+                // Try to get all tickets for the event
+                try {
+                    const allTicketsResponse = await apiClient.get(`/tickets/event/${eventID}`);
+                    console.log(`Found ${allTicketsResponse.data.length} total tickets for event ${eventID}`);
+                    
+                    // Filter tickets on client side to get those that match criteria
+                    response.data = allTicketsResponse.data.filter(ticket => {
+                        // Parse seat details to get category
+                        const seatID = ticket.seatID;
+                        if (!seatID) return false;
+                        
+                        // For VIP tickets
+                        if (category === 'VIP' && seatID.toLowerCase().includes('vip')) {
+                            return ticket.listed_for_trade === true;
+                        }
+                        
+                        // For regular category tickets
+                        const categoryMatch = seatID.match(/_cat_(\d+)/i);
+                        return categoryMatch && 
+                               categoryMatch[1] === category && 
+                               ticket.listed_for_trade === true;
+                    });
+                    
+                    console.log(`Found ${response.data.length} tickets matching category ${category}`);
+                } catch (fallbackError) {
+                    console.error('Fallback approach failed:', fallbackError);
+                }
+            }
+            
+            // Further filter on the client side to ensure we only get tickets that are listed for trade
+            const tradableTickets = response.data.filter(ticket => 
+                ticket.listed_for_trade === true &&
+                ticket.status !== 'voided' &&
+                ticket.status !== 'cancelled'
+            );
+            
+            return tradableTickets;
+        } 
         catch (error) {
-            console.error('Error fetching tradeable tickets:', error)
-            throw error
+            console.error('Error fetching tradeable tickets:', error);
+            // Return empty array instead of throwing to avoid crashing the UI
+            return [];
         }
     },
 
@@ -106,6 +151,18 @@ const myTicketService = {
         catch (error) {
             console.error('Error fetching event details:', error)
             throw error
+        }
+    },
+
+    // Get all tickets for a specific event (for debugging)
+    getAllTicketsForEvent: async (eventID) => {
+        try {
+            const response = await apiClient.get(`/tickets/event/${eventID}`);
+            console.log(`Found ${response.data.length} total tickets for event ${eventID}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching all tickets for event ${eventID}:`, error);
+            return [];
         }
     }
 }

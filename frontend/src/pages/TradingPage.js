@@ -51,28 +51,19 @@ const TradingPage = () => {
         return;
       }
       
-      // Log selected ticket details for debugging
-      console.log('Selected ticket for trade:', {
-        ticketID: ticket.ticketID,
+      console.log('Looking for trades with:', {
         eventID: ticket.eventID,
-        eventTitle: ticket.eventTitle,
-        seatID: ticket.seatID,
-        category: seatDetails.category
+        category: seatDetails.category,
+        userID: backendUserId
       });
       
-      // Get event details directly from the ticket
-      const eventDetails = {
-        eventTitle: ticket.eventTitle || 'Unknown Event',
-        eventDate: ticket.eventDate || 'Unknown Date',
-        eventTime: ticket.eventTime || 'Unknown Time',
-        eventID: ticket.eventID
-      };
-      
-      // Call the API to get tradeable tickets
+      // Call the API to get tradeable tickets with the same event and category
       const tradableTickets = await myTicketService.getTradeableTickets(
         ticket.eventID,
         seatDetails.category
       );
+      
+      console.log('Raw tradable tickets returned:', tradableTickets);
       
       // Immediately filter out tickets that aren't valid for trading
       const filteredTickets = tradableTickets.filter(tradeTicket => 
@@ -85,19 +76,95 @@ const TradingPage = () => {
         tradeTicket.status !== 'cancelled'
       );
       
-      console.log(`Found ${filteredTickets.length} active tickets available for trade`);
+      console.log(`Found ${filteredTickets.length} active tickets available for trade after filtering`);
       
-      // Enrich tickets with event information
-      const enrichedTickets = filteredTickets.map(tradeTicket => ({
-        ...tradeTicket,
-        eventTitle: eventDetails.eventTitle,
-        eventDate: eventDetails.eventDate,
-        eventTime: eventDetails.eventTime,
-        eventID: eventDetails.eventID
-      }));
+      // DIAGNOSTIC: If no tradable tickets found, check all tickets in the event
+      if (filteredTickets.length === 0) {
+        console.log('No trades found via normal method - running diagnostic check');
+        try {
+          // Get all tickets for this event
+          const allEventTickets = await myTicketService.getAllTicketsForEvent(ticket.eventID);
+          console.log(`Found ${allEventTickets.length} total tickets for event ${ticket.eventID}`);
+          
+          // Check how many are actually listed for trade
+          const listedForTrade = allEventTickets.filter(t => t.listed_for_trade === true);
+          console.log(`${listedForTrade.length} tickets are listed for trade`);
+          
+          // Check how many are in the same category
+          const sameCategory = listedForTrade.filter(t => {
+            const details = parseSeatDetails(t.seatID);
+            return details && details.category === seatDetails.category;
+          });
+          console.log(`${sameCategory.length} tickets match category ${seatDetails.category}`);
+          
+          // Check how many are from other users
+          const fromOtherUsers = sameCategory.filter(t => t.userID !== backendUserId);
+          console.log(`${fromOtherUsers.length} tickets are from other users`);
+          
+          // If we found valid tickets that weren't returned by the API, use them
+          if (fromOtherUsers.length > 0) {
+            console.log('Found valid tradable tickets via diagnostic check!');
+            
+            // If no event details are available, get them from the user's ticket
+            const eventDetails = {
+              eventTitle: ticket.eventTitle,
+              eventDate: ticket.eventDate,
+              eventTime: ticket.eventTime,
+              eventID: ticket.eventID
+            };
+            
+            // Enrich tickets with event information
+            const enrichedTickets = fromOtherUsers.map(tradeTicket => ({
+              ...tradeTicket,
+              eventTitle: eventDetails.eventTitle,
+              eventDate: eventDetails.eventDate,
+              eventTime: eventDetails.eventTime,
+              eventID: eventDetails.eventID
+            }));
+            
+            // Set the available tickets state with these diagnostic results
+            setAvailableTickets(enrichedTickets);
+            
+            // Exit early - we've found tickets via diagnostic method
+            if (availableTicketsRef.current) {
+              setTimeout(() => {
+                availableTicketsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 100);
+            }
+            setIsLoadingTrades(false);
+            return;
+          }
+        } catch (diagError) {
+          console.error('Diagnostic check failed:', diagError);
+        }
+      }
       
-      // Set state and scroll to the section
-      setAvailableTickets(enrichedTickets);
+      // If no event details are available, get them from the user's ticket
+      const eventDetails = {
+        eventTitle: ticket.eventTitle,
+        eventDate: ticket.eventDate,
+        eventTime: ticket.eventTime,
+        eventID: ticket.eventID
+      };
+      
+      if (filteredTickets.length > 0) {
+        // Enrich tickets with event information
+        const enrichedTickets = filteredTickets.map(tradeTicket => ({
+          ...tradeTicket,
+          eventTitle: eventDetails.eventTitle,
+          eventDate: eventDetails.eventDate,
+          eventTime: eventDetails.eventTime,
+          eventID: eventDetails.eventID
+        }));
+        
+        console.log('Enriched tradable tickets:', enrichedTickets);
+        
+        // Set the available tickets state
+        setAvailableTickets(enrichedTickets);
+      } else {
+        console.log('No tradable tickets found for this event and category');
+        setAvailableTickets([]);
+      }
       
       // Scroll to available tickets section after they're loaded
       if (availableTicketsRef.current) {
@@ -111,6 +178,7 @@ const TradingPage = () => {
         type: 'error',
         message: 'Failed to load available tickets for trade'
       });
+      setAvailableTickets([]);
     } finally {
       setIsLoadingTrades(false);
     }
@@ -724,16 +792,12 @@ const TradingPage = () => {
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute top-3 right-3">
-                              {(() => {
-                                return (
-                                  <Badge 
-                                    className="text-white font-medium px-2 py-1"
-                                    style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
-                                  >
-                                    {categoryName}
-                                  </Badge>
-                                );
-                              })()}
+                              <Badge 
+                                className="text-white font-medium px-2 py-1"
+                                style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
+                              >
+                                {categoryName}
+                              </Badge>
                             </div>
                           </div>
                         </div>
