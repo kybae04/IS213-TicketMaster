@@ -1,29 +1,34 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
+    // Prevent multiple clicks
+    if (isLoggingOut) return;
+    
     try {
+      setIsLoggingOut(true);
       console.log("Attempting to log out...");
+      
+      // Force a direct page navigation on logout
+      // This ensures that even if the context state is stale, the user is still logged out
       const result = await logout();
       console.log("Logout result:", result);
-      if (result) {
-        console.log("Logout successful, navigating to login page");
-        navigate('/login');
-      } else {
-        console.error("Logout returned false");
-        alert("Logout failed. Please try again.");
-      }
+      
+      // Instead of conditionally navigating, always navigate and force a page reload
+      // This ensures a fresh state and prevents issues with stale context
+      window.location.href = '/login';
     } catch (error) {
       console.error('Error logging out:', error);
       alert(`Logout error: ${error.message || 'Unknown error'}`);
+      setIsLoggingOut(false);
     }
-  };
+  }, [logout, isLoggingOut]);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -73,9 +78,14 @@ function Navbar() {
                   </span>
                   <button
                     onClick={handleLogout}
-                    className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                    disabled={isLoggingOut}
+                    className={`${
+                      isLoggingOut 
+                        ? 'bg-gray-600 cursor-not-allowed' 
+                        : 'bg-gray-800 hover:bg-gray-700'
+                    } text-gray-300 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-colors`}
                   >
-                    Logout
+                    {isLoggingOut ? 'Logging out...' : 'Logout'}
                   </button>
                 </div>
               ) : (

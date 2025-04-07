@@ -125,12 +125,21 @@ export const signIn = async (email, password) => {
 export const signOut = async () => {
   try {
     console.log("Executing signOut in authService");
-    const { error } = await supabase.auth.signOut();
+    
+    // Force a complete signout with the scope: 'global' option
+    // This ensures all devices and tabs are logged out
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
     
     if (error) {
       console.error("Supabase signOut error:", error);
       throw error;
     }
+    
+    // Clear any local storage items that might be related to authentication
+    localStorage.removeItem('supabase.auth.token');
+    
+    // Clear session storage too
+    sessionStorage.removeItem('supabase.auth.token');
     
     console.log("Supabase signOut successful");
     return true;

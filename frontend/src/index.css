@@ -56,8 +56,17 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: hsl(var(--background));
+  background-color: #121a2f !important;
   color: hsl(var(--foreground));
+}
+
+html {
+  background-color: #121a2f !important;
+}
+
+#root {
+  background-color: #121a2f !important;
+  min-height: 100vh;
 }
 
 code {

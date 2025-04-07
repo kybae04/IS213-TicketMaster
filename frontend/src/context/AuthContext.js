@@ -100,20 +100,24 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       console.log("Starting logout process in AuthContext");
+      
+      // First clear our state before calling signOut
+      setUser(null);
+      setBackendUserId(null);
+      
+      // Then perform the actual signout
       const result = await signOut();
       console.log("signOut result in AuthContext:", result);
       
-      if (result) {
-        console.log("Setting user to null in AuthContext");
-        setUser(null);
-        setBackendUserId(null);
-        return true;
-      } else {
-        console.error("signOut returned unexpected result:", result);
-        return false;
-      }
+      // Refresh current window auth state just in case
+      window.dispatchEvent(new Event('storage'));
+      
+      return true;
     } catch (error) {
       console.error("Error in AuthContext logout:", error);
+      // Even on error, we should clear the local state
+      setUser(null);
+      setBackendUserId(null);
       return false;
     }
   };

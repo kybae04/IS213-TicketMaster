@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function LoginPage() {
@@ -7,21 +7,12 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [loginSuccess, setLoginSuccess] = useState(false);
 
-  const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
 
   // Get returnTo path from location state, defaulting to home
   const returnTo = location.state?.from?.pathname || '/';
-
-  // If login succeeds, redirect
-  useEffect(() => {
-    if (loginSuccess) {
-      navigate(returnTo, { replace: true });
-    }
-  }, [loginSuccess, navigate, returnTo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,11 +22,18 @@ function LoginPage() {
     setError(null);
 
     try {
-      await login(email, password);
-      setLoginSuccess(true);
+      const result = await login(email, password);
+      if (result && result.user) {
+        console.log("Login successful, redirecting to:", returnTo);
+        // Use direct page navigation instead of React Router to ensure a fresh state
+        window.location.href = returnTo;
+      } else {
+        setError('Login failed. Please try again.');
+        setLoading(false);
+      }
     } catch (error) {
+      console.error("Login error:", error);
       setError(error.message || 'An error occurred during sign in');
-    } finally {
       setLoading(false);
     }
   };
