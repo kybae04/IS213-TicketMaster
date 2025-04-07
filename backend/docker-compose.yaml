@@ -53,6 +53,10 @@ services:
     container_name: trade_ticket_service
     ports:
       - "8505:8003"
+    environment:
+      - dbURL=${TICKET_DB_URL}
+    env_file:
+      - .env
     depends_on:
       - seat_allocation
       - payment
