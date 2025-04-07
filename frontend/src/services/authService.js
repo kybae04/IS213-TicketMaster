@@ -68,6 +68,53 @@ export const signIn = async (email, password) => {
   });
   
   if (error) throw error;
+  
+  // When user signs in, check if their backend_user_id in metadata is accurate
+  // If not, update it from the mapping table
+  if (data.user) {
+    try {
+      // Check if user has the correct backend_user_id in metadata
+      const currentMetadataId = data.user.user_metadata?.backend_user_id;
+      
+      // Get the mapping from the database
+      const { data: mappingData, error: mappingError } = await supabase
+        .from('user_mapping')
+        .select('backend_user_id')
+        .eq('supabase_uid', data.user.id)
+        .single();
+      
+      if (mappingError) {
+        console.error("Error fetching user mapping:", mappingError);
+      } else if (mappingData) {
+        const correctBackendId = mappingData.backend_user_id;
+        
+        // If the ID in metadata doesn't match the one in the mapping table, update it
+        if (currentMetadataId !== correctBackendId) {
+          console.log(`Updating user metadata backend_user_id from ${currentMetadataId} to ${correctBackendId}`);
+          
+          // Update the user's metadata
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: { backend_user_id: correctBackendId }
+          });
+          
+          if (updateError) {
+            console.error("Failed to update user metadata:", updateError);
+          } else {
+            console.log("Successfully updated user metadata with correct backend_user_id");
+            
+            // Update the user object in the returned data to include the correct ID
+            data.user.user_metadata = {
+              ...data.user.user_metadata,
+              backend_user_id: correctBackendId
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error processing user mapping on sign in:", err);
+    }
+  }
+  
   return data;
 };
 
@@ -110,5 +157,42 @@ export const getCurrentSession = async () => {
 export const getCurrentUser = async () => {
   const { data, error } = await supabase.auth.getUser();
   if (error) throw error;
+  
+  // If we have a user, ensure their backend_user_id metadata is up to date
+  if (data.user) {
+    try {
+      const { data: mappingData, error: mappingError } = await supabase
+        .from('user_mapping')
+        .select('backend_user_id')
+        .eq('supabase_uid', data.user.id)
+        .single();
+        
+      if (mappingError) {
+        console.error("Error fetching user mapping in getCurrentUser:", mappingError);
+      } else if (mappingData && mappingData.backend_user_id) {
+        const correctBackendId = mappingData.backend_user_id;
+        const currentMetadataId = data.user.user_metadata?.backend_user_id;
+        
+        // If metadata doesn't match the database, update it
+        if (currentMetadataId !== correctBackendId) {
+          console.log(`Correcting user metadata backend_user_id from ${currentMetadataId} to ${correctBackendId}`);
+          
+          // Update the user's metadata
+          await supabase.auth.updateUser({
+            data: { backend_user_id: correctBackendId }
+          });
+          
+          // Also update the user object we're about to return
+          data.user.user_metadata = {
+            ...data.user.user_metadata,
+            backend_user_id: correctBackendId
+          };
+        }
+      }
+    } catch (err) {
+      console.error("Error updating user metadata in getCurrentUser:", err);
+    }
+  }
+  
   return data.user;
 }; 

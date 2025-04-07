@@ -1,6 +1,7 @@
 // 📁 src/context/cancelContext.js
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect } from 'react';
 import cancelService from '../services/cancelService';
+import { useAuth } from './AuthContext';
 
 const initialState = {
   refundEligibility: null,
@@ -25,11 +26,25 @@ const cancelReducer = (state, action) => {
 
 export const CancelProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cancelReducer, initialState);
+  const { backendUserId, user, loading: authLoading } = useAuth();
+  // Store the latest used backend user ID to detect changes
+  const lastUsedUserIdRef = useRef(null);
 
   const checkRefundEligibility = useCallback(async (eventID) => {
+    // For debugging
+    console.log('Current backendUserId:', backendUserId);
+    console.log('Current user:', user?.email, user?.id);
+    
+    // Update the last used user ID
+    lastUsedUserIdRef.current = backendUserId;
+
     dispatch({ type: 'CHECK_REFUND_REQUEST' });
     try {
-      const data = await cancelService.verifyRefundEligibility(eventID);
+      if (!backendUserId) {
+        throw new Error('No backend user ID found. Please ensure you are logged in with a valid account.');
+      }
+      console.log('Fetching tickets for user:', backendUserId);
+      const data = await cancelService.verifyRefundEligibility(eventID, backendUserId);
       dispatch({ type: 'CHECK_REFUND_SUCCESS', payload: data });
       console.log('Refund eligibility data:', data);
       return data;
@@ -40,7 +55,17 @@ export const CancelProvider = ({ children }) => {
       });
       return { refund_eligibility: false, message: 'Error checking refund eligibility' };
     }
-  }, []);
+  }, [backendUserId, user]);
+
+  // Debug logging for auth context values
+  useEffect(() => {
+    console.log('Auth context in MyTicketsContext:', {
+      backendUserId,
+      userEmail: user?.email,
+      userID: user?.id,
+      authLoading
+    });
+  }, [backendUserId, user, authLoading]);
 
   const cancelTicket = useCallback(async (txnID, refundEligibility) => {
     dispatch({ type: 'CHECK_REFUND_REQUEST' }); // reuse loading state
@@ -56,7 +81,7 @@ export const CancelProvider = ({ children }) => {
       throw error;
     }
   }, []);
-  
+
 
   return (
     <CancelContext.Provider value={{ ...state, checkRefundEligibility, cancelTicket }}>

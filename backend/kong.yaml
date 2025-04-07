@@ -312,6 +312,114 @@ routes:
   - hosts: ~
     request_buffering: true
     response_buffering: true
+    service: 9fd8ddbc-9615-4c71-b72b-d4b015051898
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/trade-status/(?<ticketID>[^/]+)
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-trade-requests-by-ticketID
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 9fd8ddbc-9615-4c71-b72b-d4b015051898
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/trade-request/(?<trade_request_id>[^/]+)$
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-trade-request-by-tradeRequestID
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 9fd8ddbc-9615-4c71-b72b-d4b015051898
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/trade-requests/ticket/(?<ticketID>[^/]+)
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-pending-trade-requests-by-ticket-id
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/tickets/event/(?<event_id>[^/]+)
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-ticket-by-event-id
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 9fd8ddbc-9615-4c71-b72b-d4b015051898
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/tickets/up-for-trade/(?<event_id>[^/]+)/(?<category>[^/]+)
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: get-tradable-tickets
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - GET
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/ticket/(?<ticketID>[^/]+)/list-for-trade
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: list-ticket-for-trade
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - PUT
+      - OPTIONS
+    protocols:
+      - http
+      - https
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
     service: b2e36429-5f7b-4b18-982a-ffb33c110c75
     headers: ~
     strip_path: false
@@ -512,33 +620,6 @@ routes:
       - POST
       - OPTIONS
     updated_at: 1742746108
-    tags: ~
-    sources: ~
-    protocols:
-      - http
-      - https
-  - hosts: ~
-    request_buffering: true
-    response_buffering: true
-    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
-    headers: ~
-    id: 4b18a1ac-d00d-4981-9fc2-707b97986c52
-    strip_path: false
-    paths:
-      - ~/ticket/trade/(?<ticketID>[^/]+)
-    path_handling: v0
-    https_redirect_status_code: 426
-    name: trade-ticket
-    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
-    regex_priority: 10
-    destinations: ~
-    created_at: 1742746282
-    snis: ~
-    preserve_host: false
-    methods:
-      - PUT
-      - OPTIONS
-    updated_at: 1742749311
     tags: ~
     sources: ~
     protocols:
@@ -917,33 +998,6 @@ routes:
       - POST
       - OPTIONS
     updated_at: 1742749774
-    tags: ~
-    sources: ~
-    protocols:
-      - http
-      - https
-  - hosts: ~
-    request_buffering: true
-    response_buffering: true
-    service: 47a3ea55-4700-48c0-a570-cc12aab1f001
-    headers: ~
-    id: ced94bb9-b385-4060-98bb-fc252658e5fc
-    strip_path: false
-    paths:
-      - ~/ticket/(?<ticket_id>[^/]+)/set-trade-id$
-    path_handling: v0
-    https_redirect_status_code: 426
-    name: set-trade-id
-    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
-    regex_priority: 0
-    destinations: ~
-    created_at: 1743269987
-    snis: ~
-    preserve_host: false
-    methods:
-      - POST
-      - OPTIONS
-    updated_at: 1743269987
     tags: ~
     sources: ~
     protocols:

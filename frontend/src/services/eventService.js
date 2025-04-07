@@ -34,7 +34,7 @@ const eventService = {
       console.log('Directly checking raw API response...');
       const response = await apiClient.get(EVENTS_API_URL);
       console.log('Raw API content:', response.data);
-      
+
       if (response.data && response.data.Events) {
         console.log('Events array sample:', response.data.Events.slice(0, 2));
         return {
@@ -73,20 +73,20 @@ const eventService = {
     try {
       const fullUrl = `${apiClient.defaults.baseURL}${EVENTS_API_URL}`;
       console.log(`Fetching events from API at ${fullUrl}...`);
-      
+
       const response = await apiClient.get(EVENTS_API_URL);
       console.log('API Response status:', response.status);
       console.log('API Response data:', response.data);
-      
+
       // Extract events from the response - specifically handling the format:
       // { "Result": { "Success": true, "ErrorMessage": "" }, "Events": [...] }
       let eventsData = [];
-      
+
       if (response.data && response.data.Events && Array.isArray(response.data.Events)) {
         // This is the exact format from the browser output
         eventsData = response.data.Events;
         console.log('Found events in response.data.Events with', eventsData.length, 'items');
-      } 
+      }
       else if (Array.isArray(response.data)) {
         // Direct array in case the API response format changes
         eventsData = response.data;
@@ -102,28 +102,28 @@ const eventService = {
           }
         }
       }
-      
+
       if (eventsData.length > 0) {
         console.log('First event in response:', eventsData[0]);
-        
+
         // Transform the event data to match expected format in the frontend
         const transformedEvents = eventsData.map((event) => {
           console.log('Processing raw event:', event);
-          
+
           // Get the correct image for this artist
           const artistName = event.Artist;
           const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
           const imagePath = `/events/${imageFilename}`;
-          
+
           // Note: For the events list, we use placeholder pricing
           // The actual detailed pricing will be fetched when viewing a specific event
           const placeholderPrices = {
-            VIP: 399,
-            CAT1: 299,
-            CAT2: 199,
-            CAT3: 99
+            vip: 399,
+            cat_1: 299,
+            cat_2: 199,
+            cat_3: 99
           };
-          
+
           // Create a properly formatted event object with exact values from API
           const transformedEvent = {
             id: parseInt(event.EventId, 10),
@@ -141,16 +141,16 @@ const eventService = {
             // Keep original data for reference
             EventId: parseInt(event.EventId, 10)
           };
-          
+
           console.log(`Transformed event with artist-specific image:`, transformedEvent);
           return transformedEvent;
         });
-        
+
         console.log('All transformed events:', transformedEvents.length);
         cachedEvents = transformedEvents;
         return transformedEvents;
       }
-      
+
       console.error('API returned an empty events array or events not found in the response');
       return [];
     } catch (error) {
@@ -159,7 +159,7 @@ const eventService = {
       return [];
     }
   },
-  
+
   /**
    * Fetches a specific event by its ID
    * @param {string|number} eventId - The ID of the event to fetch
@@ -179,16 +179,16 @@ const eventService = {
       // Get the event from the API using the correct route
       const response = await apiClient.get(`${EVENTS_API_URL}${eventId}`);
       console.log(`API Response for event ${eventId}:`, response.data);
-      
+
       // Extract event from the response
       let eventData = null;
       let categoryData = [];
-      
+
       // Handle different possible response formats
       if (response.data && response.data.EventResponse) {
         eventData = response.data.EventResponse;
         categoryData = response.data.EventResponse.Category || [];
-      } 
+      }
       else if (response.data && response.data.EventId) {
         // Direct event object with EventId field
         eventData = response.data;
@@ -213,44 +213,44 @@ const eventService = {
           categoryData = eventData.Category;
         }
       }
-      
+
       if (eventData) {
         // Get the correct image based on artist name
         const artistName = eventData.Artist;
         const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
         const imagePath = `/events/${imageFilename}`;
-        
+
         // Process category and price data from API
         const prices = {};
-        
+
         // Map the categories from API to our frontend category structure
         if (categoryData && categoryData.length > 0) {
           categoryData.forEach(category => {
             // Convert API's category format (cat_1, cat_2, cat_3, vip) to our format (CAT1, CAT2, CAT3, VIP)
-            let categoryKey = '';
-            if (category.CategoryNo === 'vip') {
-              categoryKey = 'VIP';
-            } else if (category.CategoryNo === 'cat_1') {
-              categoryKey = 'CAT1';
-            } else if (category.CategoryNo === 'cat_2') {
-              categoryKey = 'CAT2';
-            } else if (category.CategoryNo === 'cat_3') {
-              categoryKey = 'CAT3';
-            }
-            
-            if (categoryKey) {
-              prices[categoryKey] = Number(category.Price);
-            }
+            // let categoryKey = '';
+            // if (category.CategoryNo === 'vip') {
+            //   categoryKey = 'VIP';
+            // } else if (category.CategoryNo === 'cat_1') {
+            //   categoryKey = 'CAT1';
+            // } else if (category.CategoryNo === 'cat_2') {
+            //   categoryKey = 'CAT2';
+            // } else if (category.CategoryNo === 'cat_3') {
+            //   categoryKey = 'CAT3';
+            // }
+
+            // if (category.CategoryNo) {
+            prices[category.CategoryNo] = Number(category.Price);
+            // }
           });
         } else {
           // Only use fallback prices if no categories found in API
           console.warn('No category data found in API response, using fallback prices');
-          prices.VIP = 399;
-          prices.CAT1 = 299;
-          prices.CAT2 = 199;
-          prices.CAT3 = 99;
+          prices.vip = 399;
+          prices.cat_1 = 299;
+          prices.cat_2 = 199;
+          prices.cat_3 = 99;
         }
-        
+
         // Transform the event data to match frontend expectations
         const transformedEvent = {
           id: parseInt(eventData.EventId, 10) || parseInt(eventId, 10) || 1,
@@ -269,19 +269,19 @@ const eventService = {
           // Keep original EventId field as well
           EventId: parseInt(eventData.EventId, 10) || parseInt(eventId, 10) || 1
         };
-        
+
         console.log('Transformed single event with API pricing:', transformedEvent);
         return transformedEvent;
       }
-      
+
       throw new Error(`Event with ID ${eventId} not found in API response`);
     } catch (error) {
       console.error(`Error fetching event with ID ${eventId}:`, error);
-      
+
       // If we already fetched all events, try to find it there as a fallback
       if (!cachedEvents) {
         await eventService.getAllEvents();
-        
+
         if (cachedEvents) {
           const cachedEvent = cachedEvents.find(
             event => (event.id === Number(eventId) || event.EventId === Number(eventId))
@@ -289,11 +289,11 @@ const eventService = {
           if (cachedEvent) return cachedEvent;
         }
       }
-      
+
       throw new Error(`Event with ID ${eventId} not found`);
     }
   },
-  
+
   /**
    * Clears the event cache
    */

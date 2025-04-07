@@ -9,4 +9,3 @@ print("DATABASE_URL:", os.getenv("TICKET_DB_URL"))
 class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("TICKET_DB_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    TRADE_TICKET_SERVICE_URL = os.getenv("TRADE_TICKET_SERVICE_URL", "http://trade-ticket-service")

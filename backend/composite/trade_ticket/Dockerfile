@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 8003
 
-CMD ["python", "routes.py"]
+CMD ["python", "app.py"]
