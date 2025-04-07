@@ -1,7 +1,8 @@
 /**
  * Parses seat ID string to extract section, row, seat number and category
  * Example input: "E04_F06_cat_1" or "E03_A04_vip"
- * Output: { event: "04", section: "F", seat: "06", category: "1" } or { event: "03", section: "A", seat: "04", category: "VIP" }
+ * Output: { event: "4", section: "F", seat: "06", category: "1" } or { event: "3", section: "A", seat: "04", category: "VIP" }
+ * Note: Event ID is parsed without leading zeros (E03 becomes "3")
  */
 export const parseSeatDetails = (seatID) => {
   try {
@@ -14,8 +15,11 @@ export const parseSeatDetails = (seatID) => {
       const vipMatches = seatID.match(vipRegex);
       
       if (vipMatches) {
+        // Parse event ID without leading zeros
+        const eventId = parseInt(vipMatches[1], 10).toString();
+        
         return {
-          event: vipMatches[1],
+          event: eventId,
           section: vipMatches[2],
           seat: vipMatches[3],
           category: "VIP"  // Always set to VIP if 'vip' is in the string
@@ -36,8 +40,11 @@ export const parseSeatDetails = (seatID) => {
     const catMatches = seatID.match(catRegex);
     
     if (catMatches && catMatches.length >= 5) {
+      // Parse event ID without leading zeros
+      const eventId = parseInt(catMatches[1], 10).toString();
+      
       return {
-        event: catMatches[1],
+        event: eventId,
         section: catMatches[2],
         seat: catMatches[3],
         category: catMatches[4]
@@ -53,8 +60,14 @@ export const parseSeatDetails = (seatID) => {
       const basicInfoRegex = /E(\d+)_([A-Z])(\d+)/i;
       const basicMatches = seatID.match(basicInfoRegex);
       
+      let eventId = "1";
+      if (basicMatches && basicMatches[1]) {
+        // Parse event ID without leading zeros
+        eventId = parseInt(basicMatches[1], 10).toString();
+      }
+      
       return {
-        event: basicMatches?.[1] || "1",
+        event: eventId,
         section: basicMatches?.[2] || "A",
         seat: basicMatches?.[3] || "1",
         category: simpleCatMatch[1]
@@ -65,8 +78,14 @@ export const parseSeatDetails = (seatID) => {
     const anyEventMatch = seatID.match(/E(\d+)/i);
     const anySectionMatch = seatID.match(/_([A-Z])(\d+)/i);
     
+    let eventId = "1";
+    if (anyEventMatch && anyEventMatch[1]) {
+      // Parse event ID without leading zeros
+      eventId = parseInt(anyEventMatch[1], 10).toString();
+    }
+    
     return {
-      event: anyEventMatch?.[1] || "1",
+      event: eventId,
       section: anySectionMatch?.[1] || "A",
       seat: anySectionMatch?.[2] || "1",
       category: "1" // Default to category 1

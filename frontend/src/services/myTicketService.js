@@ -86,34 +86,6 @@ const myTicketService = {
             // If no tickets returned or empty array, try a fallback approach
             if (!response.data || response.data.length === 0) {
                 console.log('No tickets found via up-for-trade endpoint, trying fallback approach');
-                
-                // Try to get all tickets for the event
-                try {
-                    const allTicketsResponse = await apiClient.get(`/tickets/event/${eventID}`);
-                    console.log(`Found ${allTicketsResponse.data.length} total tickets for event ${eventID}`);
-                    
-                    // Filter tickets on client side to get those that match criteria
-                    response.data = allTicketsResponse.data.filter(ticket => {
-                        // Parse seat details to get category
-                        const seatID = ticket.seatID;
-                        if (!seatID) return false;
-                        
-                        // For VIP tickets
-                        if (category === 'VIP' && seatID.toLowerCase().includes('vip')) {
-                            return ticket.listed_for_trade === true;
-                        }
-                        
-                        // For regular category tickets
-                        const categoryMatch = seatID.match(/_cat_(\d+)/i);
-                        return categoryMatch && 
-                               categoryMatch[1] === category && 
-                               ticket.listed_for_trade === true;
-                    });
-                    
-                    console.log(`Found ${response.data.length} tickets matching category ${category}`);
-                } catch (fallbackError) {
-                    console.error('Fallback approach failed:', fallbackError);
-                }
             }
             
             // Further filter on the client side to ensure we only get tickets that are listed for trade
@@ -151,6 +123,19 @@ const myTicketService = {
         catch (error) {
             console.error('Error fetching event details:', error)
             throw error
+        }
+    },
+
+    // Get event by event ID (derived from seat ID)
+    getEventByEventId: async (eventId) => {
+        try {
+            // Get event directly using the extracted event ID
+            const response = await apiClient.get(`/events/${eventId}`);
+            console.log(`Fetched event details for event ID ${eventId}:`, response.data);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching event details for event ID ${eventId}:`, error);
+            return null;
         }
     },
 
