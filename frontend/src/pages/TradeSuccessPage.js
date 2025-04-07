@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { parseSeatDetails, getCategoryName } from '../utils/seatUtils';
 
 const TradeSuccessPage = () => {
   const location = useLocation();
@@ -18,19 +19,23 @@ const TradeSuccessPage = () => {
   const safeTradeData = tradeData || {
     eventName: "Example Event",
     tradedTickets: {
-      category: "VIP",
-      count: 1
+      ticketID: "example-ticket-123",
+      seatID: "E04_D03_cat_1"
     },
     receivedTickets: {
-      category: "VIP",
-      count: 1
+      ticketID: "example-ticket-456",
+      seatID: "E04_D05_cat_1"
     },
     tradeDate: new Date().toLocaleDateString()
   };
 
+  // Parse seat details
+  const tradedSeatDetails = parseSeatDetails(safeTradeData.tradedTickets.seatID);
+  const receivedSeatDetails = parseSeatDetails(safeTradeData.receivedTickets.seatID);
+
   return (
-    <div className="container mx-auto px-4 py-8 text-center">
-      <div className="max-w-xl mx-auto bg-gray-800 p-8 rounded-lg border-2 border-green-500">
+    <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 py-8 text-center">
+      <div className="max-w-xl mx-auto bg-[#1a2642] p-8 rounded-lg border-2 border-green-500">
         <div className="mx-auto w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mb-6">
           <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
@@ -42,7 +47,7 @@ const TradeSuccessPage = () => {
           Your ticket trading request has been successfully processed.
         </p>
         
-        <div className="mb-6 bg-gray-700 p-4 rounded-lg text-left">
+        <div className="mb-6 bg-[#12203f] p-4 rounded-lg text-left">
           <h2 className="text-xl font-semibold text-blue-400 mb-3">Trade Details</h2>
           <div className="grid grid-cols-2 gap-3 mb-2">
             <div>
@@ -55,19 +60,29 @@ const TradeSuccessPage = () => {
             </div>
           </div>
           
-          <div className="border-t border-gray-600 my-3"></div>
+          <div className="border-t border-gray-700 my-3"></div>
           
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-gray-400 text-sm">Traded Out:</p>
               <p className="text-white">
-                {safeTradeData.tradedTickets.count} x {safeTradeData.tradedTickets.category} Ticket{safeTradeData.tradedTickets.count > 1 ? 's' : ''}
+                {getCategoryName(tradedSeatDetails?.category)} Ticket
+              </p>
+              <p className="text-gray-300 text-sm">
+                Section {tradedSeatDetails?.section || 'Unknown'}, 
+                Row {tradedSeatDetails?.row || 'Unknown'}, 
+                Seat {tradedSeatDetails?.seat || 'Unknown'}
               </p>
             </div>
             <div>
               <p className="text-gray-400 text-sm">Received:</p>
               <p className="text-white">
-                {safeTradeData.receivedTickets.count} x {safeTradeData.receivedTickets.category} Ticket{safeTradeData.receivedTickets.count > 1 ? 's' : ''}
+                {getCategoryName(receivedSeatDetails?.category)} Ticket
+              </p>
+              <p className="text-gray-300 text-sm">
+                Section {receivedSeatDetails?.section || 'Unknown'}, 
+                Row {receivedSeatDetails?.row || 'Unknown'}, 
+                Seat {receivedSeatDetails?.seat || 'Unknown'}
               </p>
             </div>
           </div>
@@ -93,7 +108,7 @@ const TradeSuccessPage = () => {
           <Button 
             onClick={() => navigate('/')}
             variant="outline"
-            className="border-white text-white hover:bg-gray-700"
+            className="border-white text-white hover:bg-[#12203f]"
           >
             Explore Events
           </Button>

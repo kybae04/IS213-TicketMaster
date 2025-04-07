@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { useMyTickets } from '../context/myTicketsContext';
 import { useCancel } from '../context/cancelContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { parseSeatDetails } from '../utils/seatUtils';
+import { useAuth } from '../context/AuthContext';
+import myTicketService from '../services/myTicketService';
 
 // Map of artist names to their image filenames
 const artistImageMap = {
@@ -19,11 +23,18 @@ const artistImageMap = {
 
 // Image mapping function based on artistImageMap
 const getEventImage = (artistName) => {
-  // Default image in case an artist isn't found in the map
-  const DEFAULT_IMAGE = 'taylorswift.webp';
+  if (!artistName) {
+    console.log('No artist name provided for event image');
+    return '/events/default.jpg';
+  }
   
   // Get the image filename for this artist
-  const imageFilename = artistImageMap[artistName] || DEFAULT_IMAGE;
+  const imageFilename = artistImageMap[artistName];
+  if (!imageFilename) {
+    console.log(`No image found for artist: ${artistName}`);
+    return '/events/default.jpg';
+  }
+  
   return `/events/${imageFilename}`;
 };
 
@@ -42,11 +53,12 @@ const MyTicketsPage = () => {
     loading, 
     error, 
     ticketDetails,
-    fetchTicketDetails,
-    listForTrade 
+    fetchTicketDetails
   } = useMyTickets();
   const { checkRefundEligibility, cancelTicket } = useCancel();
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const notificationTimerRef = useRef(null);
+  const { backendUserId } = useAuth();
 
   // Fetch tickets only once when component mounts
   useEffect(() => {
@@ -56,12 +68,26 @@ const MyTicketsPage = () => {
   // Handle notification timeout
   useEffect(() => {
     if (notification) {
-      const timer = setTimeout(() => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+      
+      notificationTimerRef.current = setTimeout(() => {
         setNotification(null);
       }, 3000);
-      return () => clearTimeout(timer);
     }
+    
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    };
   }, [notification]);
+  
+  // Show notification function
+  const showNotification = (message, type = 'default') => {
+    setNotification({ message, type });
+  };
 
   // Group transactions by status
   const activeTransactions = transactions.filter(txn => txn.status !== 'voided');
@@ -96,12 +122,6 @@ const MyTicketsPage = () => {
     }
   };
 
-  // Handle show QR code
-  const handleShowQRCode = (ticket) => {
-    setSelectedTicket(ticket);
-    setShowQRModal(true);
-  };
-
   // Handle show ticket details in modal
   const handleShowDetails = async (transaction) => {
     setSelectedTransaction(transaction);
@@ -120,39 +140,57 @@ const MyTicketsPage = () => {
   // Handle listing a ticket for trade
   const handleListForTrade = async (ticket) => {
     try {
-      const result = await listForTrade(ticket.ticketID, selectedTransaction.transactionID);
+      // First, close the modal
+      setShowDetailsModal(false);
       
-      if (result.success) {
+      // Clear any existing notification first
+      setNotification(null);
+      
+      // Show notification after a small delay to ensure animation works properly
+      setTimeout(() => {
         setNotification({
           type: 'success',
-          message: 'Ticket successfully listed for trade!'
+          message: 'Ticket listed for trade'
         });
-      } else {
-        setNotification({
-          type: 'error',
-          message: result.error || 'Failed to list ticket for trade'
-        });
-      }
+      }, 10);
+      
+      // Then perform the API call (async)
+      await myTicketService.toggleTradeStatus(ticket.ticketID, false);
+      
+      // No need to refresh the page or fetch new data
+      // The UI is already updated with the modal closing and notification
+      
     } catch (error) {
       console.error('Error listing ticket for trade:', error);
-      setNotification({
-        type: 'error',
-        message: error.message || 'An error occurred'
-      });
+      
+      // Show error notification with small delay for animation
+      setTimeout(() => {
+        setNotification({
+          type: 'error',
+          message: 'Failed to update trade status'
+        });
+      }, 10);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-64px)] bg-[#121a2f] text-white">
-        <p>Loading your tickets...</p>
+      <div className="bg-[#121a2f] min-h-screen text-white pb-10">
+        <div className="flex items-center justify-center min-h-[70vh]">
+          <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+            <p className="text-lg text-gray-300">Loading your tickets...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] py-16 px-4">
+      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] py-4 px-4">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold text-white text-center mb-6">My Tickets</h1>
 
@@ -271,27 +309,35 @@ const MyTicketsPage = () => {
 
   return (
     <div className="bg-[#121a2f] text-white min-h-[calc(100vh-64px)]">
-      {/* Toast notification */}
+      {/* Right-aligned notification system */}
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg transition-all transform translate-y-0 opacity-100 ${
-          notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-        }`}>
-          <div className="flex items-center">
-            {notification.type === 'success' ? (
-              <svg className="w-6 h-6 mr-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6 mr-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-            <p className="text-white font-medium">{notification.message}</p>
+        <div className="fixed top-20 right-4 z-50 w-[90%] max-w-sm animate-slide-down">
+          <div className="relative overflow-hidden flex items-center p-4 rounded-lg shadow-lg bg-[#1a2642] border border-blue-900">
+            <div className="mr-3">
+              {notification.type === 'success' ? (
+                <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              ) : notification.type === 'error' ? (
+                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              )}
+            </div>
+            <div className="flex-1 text-white">{notification.message}</div>
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 animate-shrink"
+              style={{ transformOrigin: 'left' }}
+            ></div>
           </div>
         </div>
       )}
 
-      <div className="px-4 mb-8 pt-10">
+      <div className="px-4 mb-8">
         <h1 className="text-3xl font-bold text-white text-center">My Tickets</h1>
       </div>
 
@@ -393,13 +439,19 @@ const MyTicketsPage = () => {
                         <div className="p-4">
                           <div className="mb-3 space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-gray-400 text-sm">Seat ID:</span>
-                              <span className="text-white text-sm font-medium">{ticket.seatID}</span>
+                              <span className="text-gray-400 text-sm">Section:</span>
+                              <span className="text-white text-sm font-medium">{(() => {
+                                const seatDetails = parseSeatDetails(ticket.seatID);
+                                return seatDetails?.section || 'Unknown';
+                              })()}</span>
                             </div>
                             
                             <div className="flex justify-between">
-                              <span className="text-gray-400 text-sm">Status:</span>
-                              <span className="text-white text-sm font-medium">{ticket.status}</span>
+                              <span className="text-gray-400 text-sm">Seat:</span>
+                              <span className="text-white text-sm font-medium">{(() => {
+                                const seatDetails = parseSeatDetails(ticket.seatID);
+                                return seatDetails?.seat || 'Unknown';
+                              })()}</span>
                             </div>
                             
                             <div className="flex justify-between items-center">
@@ -454,16 +506,7 @@ const MyTicketsPage = () => {
                                 }}
                                 disabled={ticket.listed_for_trade}
                               >
-                                {ticket.listed_for_trade ? (
-                                  <span className="flex items-center justify-center">
-                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    Listed for Trade
-                                  </span>
-                                ) : (
-                                  'List for Trade'
-                                )}
+                                {ticket.listed_for_trade ? 'Listed for Trade' : 'List for Trade'}
                               </Button>
                             )}
                           </div>

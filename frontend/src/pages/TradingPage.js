@@ -3,73 +3,136 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import myTicketService from '../services/myTicketService';
+import { useAuth } from '../context/AuthContext';
+import { parseSeatDetails, getCategoryColor, getCategoryName } from '../utils/seatUtils';
+
+// Map of artist names to their image filenames
+const artistImageMap = {
+  'Benjamin Kheng': 'benkheng.jpg',
+  'Bruno Mars': 'brunomars.jpg',
+  'Carly Rae Jepsen': 'carly.jpg',
+  'Lady Gaga': 'ladygaga.jpg',
+  'Lauv': 'lauv.png',
+  'Taylor Swift': 'taylorswift.webp',
+  'Yoasobi': 'yoasobi.jpg'
+};
+
+// Image mapping function based on artistImageMap
+const getEventImage = (artistName) => {
+  if (!artistName) {
+    console.log('No artist name provided for event image');
+    return '/events/default.jpg';
+  }
+  
+  // Get the image filename for this artist
+  const imageFilename = artistImageMap[artistName];
+  if (!imageFilename) {
+    console.log(`No image found for artist: ${artistName}`);
+    return '/events/default.jpg';
+  }
+  
+  return `/events/${imageFilename}`;
+};
 
 const TradingPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { backendUserId } = useAuth();
   const [userTickets, setUserTickets] = useState([]);
+  const [ticketTransactions, setTicketTransactions] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedSeat, setSelectedSeat] = useState(null); // Track which specific seat is selected
   const [availableTickets, setAvailableTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTrades, setIsLoadingTrades] = useState(false);
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [ticketToTrade, setTicketToTrade] = useState(null);
+  const [notification, setNotification] = useState(null);
   const availableTicketsRef = useRef(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const notificationTimerRef = useRef(null);
 
   // Fetch available tickets for trade
-  const fetchAvailableTicketsForTrade = useCallback((ticket, seatNumber) => {
-    setIsLoading(true);
+  const fetchAvailableTicketsForTrade = useCallback(async (ticket, seatID) => {
+    if (!ticket || !seatID) return;
     
-    // In a real app, this would be an API call
-    /*
-    * MICROSERVICE INTEGRATION POINT:
-    * 
-    * In production, you would fetch from the trading microservice:
-    * const response = await fetch(`https://api-gateway.example.com/trading/available-tickets?category=${ticket.category}&eventTitle=${ticket.eventTitle}&seat=${seatNumber}`, {
-    *   headers: { Authorization: `Bearer ${token}` }
-    * });
-    * const data = await response.json();
-    */
+    setIsLoadingTrades(true);
     
-    // For demo purposes, use mock data with a short delay
-    setTimeout(() => {
-      const mockAvailableTickets = [
-        {
-          id: 'TKT-2468-1357',
-          eventTitle: ticket.eventTitle,
-          eventDate: ticket.eventDate,
-          eventTime: ticket.eventTime,
-          location: ticket.location,
-          category: ticket.category,
-          section: 'B',
-          row: '3',
-          seats: ['5'],
-          price: ticket.price / ticket.seats.length, // Price per seat
-          ownerName: 'John Smith',
-          ownerRating: 4.8,
-          tradePreference: 'same-event',
-          eventImage: ticket.eventImage
-        },
-        {
-          id: 'TKT-1357-2468',
-          eventTitle: ticket.eventTitle,
-          eventDate: ticket.eventDate,
-          eventTime: ticket.eventTime,
-          location: ticket.location,
-          category: ticket.category,
-          section: 'A',
-          row: '5',
-          seats: ['20'],
-          price: ticket.price / ticket.seats.length, // Price per seat
-          ownerName: 'Emily Johnson',
-          ownerRating: 4.9,
-          tradePreference: 'any',
-          eventImage: ticket.eventImage
-        }
-      ];
+    try {
+      // Parse the seat details to get the category
+      const seatDetails = parseSeatDetails(seatID);
+      if (!seatDetails) {
+        console.error('Failed to parse seat details');
+        setIsLoadingTrades(false);
+        return;
+      }
       
-      setAvailableTickets(mockAvailableTickets);
-      setIsLoading(false);
+      // Log selected ticket details for debugging
+      console.log('Selected ticket for trade:', {
+        ticketID: ticket.ticketID,
+        eventID: ticket.eventID,
+        eventTitle: ticket.eventTitle,
+        seatID: ticket.seatID,
+        category: seatDetails.category
+      });
+      
+      // Get full event details for the selected ticket
+      let eventDetails;
+      try {
+        const eventResponse = await myTicketService.getEventDetails(ticket.eventID);
+        eventDetails = {
+          eventTitle: eventResponse?.EventResponse?.Artist || ticket.eventTitle || 'Unknown Event',
+          eventDate: eventResponse?.EventResponse?.EventDate || ticket.eventDate || 'Unknown Date',
+          eventTime: eventResponse?.EventResponse?.EventTime || ticket.eventTime || 'Unknown Time',
+          eventID: ticket.eventID
+        };
+        console.log('Fetched complete event details:', eventDetails);
+      } catch (err) {
+        console.error('Error fetching event details:', err);
+        eventDetails = {
+          eventTitle: ticket.eventTitle,
+          eventDate: ticket.eventDate,
+          eventTime: ticket.eventTime,
+          eventID: ticket.eventID
+        };
+      }
+      
+      // Call the API to get tradeable tickets
+      // These are tickets with the same event and category, different user, and listed_for_trade=true
+      const tradableTickets = await myTicketService.getTradeableTickets(
+        ticket.eventID,
+        seatDetails.category
+      );
+      
+      // Filter out tickets owned by the current user
+      const filteredTickets = tradableTickets.filter(ticket => 
+        ticket.userID !== backendUserId && ticket.listed_for_trade === true
+      );
+      
+      console.log('Available tradable tickets (raw):', filteredTickets);
+      
+      // Log event details that will be used
+      console.log('Event details being applied to trade tickets:', eventDetails);
+      
+      // Enrich tickets with event information from selected ticket
+      const enrichedTickets = filteredTickets.map(tradeTicket => ({
+        ...tradeTicket,
+        eventTitle: eventDetails.eventTitle,
+        eventDate: eventDetails.eventDate,
+        eventTime: eventDetails.eventTime,
+        eventID: eventDetails.eventID
+      }));
+      
+      // Log enriched tickets
+      enrichedTickets.forEach(ticket => {
+        console.log(`Trade Ticket ${ticket.ticketID} enriched with: ${ticket.eventTitle}, ${ticket.eventDate}`);
+      });
+      
+      console.log(`Found ${enrichedTickets.length} tickets available for trade`);
+      setAvailableTickets(enrichedTickets);
       
       // Scroll to available tickets section after they're loaded
       if (availableTicketsRef.current) {
@@ -77,81 +140,165 @@ const TradingPage = () => {
           availableTicketsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
       }
-    }, 500);
-  }, []);
+    } catch (error) {
+      console.error('Error fetching tradeable tickets:', error);
+      setNotification({
+        type: 'error',
+        message: 'Failed to load available tickets for trade'
+      });
+    } finally {
+      setIsLoadingTrades(false);
+    }
+  }, [backendUserId]);
+
+  // Handle notification timeout
+  useEffect(() => {
+    if (notification) {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+      
+      notificationTimerRef.current = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+    }
+    
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, [notification]);
 
   // Fetch user's tickets
   useEffect(() => {
     const fetchUserTickets = async () => {
+      if (!backendUserId) return;
+      
       setIsLoading(true);
       
       try {
-        // For demo purposes, use mock data with a short delay
-        setTimeout(() => {
-          const mockTickets = [
-            {
-              id: 'TKT-1234-5678',
-              eventTitle: 'Taylor Swift: The Eras Tour',
-              eventDate: 'June 15, 2023',
-              eventTime: '7:30 PM',
-              location: 'MetLife Stadium, New Jersey',
-              category: 'VIP',
-              section: 'A',
-              row: '1',
-              seats: ['12', '13'],
-              price: 450.00,
-              purchaseDate: '2023-04-10',
-              status: 'active',
-              qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-1234-5678',
-              eventImage: 'https://source.unsplash.com/random/800x500/?concert',
-            },
-            {
-              id: 'TKT-8765-4321',
-              eventTitle: 'Coldplay: Music of the Spheres',
-              eventDate: 'August 22, 2023',
-              eventTime: '8:00 PM',
-              location: 'Wembley Stadium, London',
-              category: 'CAT1',
-              section: 'B',
-              row: '5',
-              seats: ['22'],
-              price: 180.00,
-              purchaseDate: '2023-05-15',
-              status: 'active',
-              qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKT-8765-4321',
-              eventImage: 'https://source.unsplash.com/random/800x500/?music',
-            }
-          ];
-          
-          // If a ticket was passed via location state, pre-select it
-          if (location.state?.ticket) {
-            const preSelectedTicket = location.state.ticket;
-            setUserTickets(mockTickets);
-            
-            // Find the matching ticket in our mock data or use the passed one
-            const matchedTicket = mockTickets.find(t => t.id === preSelectedTicket.id) || preSelectedTicket;
-            setSelectedTicket(matchedTicket);
-            setSelectedSeat(matchedTicket.seats[0]); // Default to first seat
-            fetchAvailableTicketsForTrade(matchedTicket, matchedTicket.seats[0]);
-          } else {
-            setUserTickets(mockTickets);
-            setIsLoading(false);
-          }
-        }, 300);
+        // Fetch tickets grouped by transaction
+        const transactions = await myTicketService.getMyTickets(backendUserId);
+        console.log(`TradingPage: Fetched ${transactions.length} transactions for user ${backendUserId}`);
         
+        // Log transaction details for debugging event data
+        transactions.forEach(txn => {
+          console.log(`Transaction ${txn.transactionID} has event title: "${txn.eventTitle}", date: ${txn.eventDate}`);
+        });
+        
+        setTicketTransactions(transactions);
+        
+        // Fetch individual tickets for the transactions
+        const ticketDetails = [];
+        
+        for (const txn of transactions) {
+          // Only include active (not voided) tickets
+          if (txn.status !== 'voided') {
+            const tickets = await myTicketService.getTicketsByTransaction(txn.transactionID);
+            console.log(`TradingPage: Transaction ${txn.transactionID} has ${tickets.length} tickets`);
+            
+            // Log details of all tickets in this transaction
+            tickets.forEach(ticket => {
+              console.log(`TradingPage: Ticket ${ticket.ticketID}, Seat ${ticket.seatID}, User ${ticket.userID}`);
+            });
+            
+            const verifiedTickets = await Promise.all(
+              tickets.map(async (ticket) => {
+                // Fetch additional details if needed
+                const tradability = await myTicketService.verifyTicketTradable(ticket.ticketID);
+                
+                // Try to get more complete event details if they're missing
+                let eventInfo = {
+                  eventTitle: txn.eventTitle,
+                  eventDate: txn.eventDate,
+                  eventTime: txn.eventTime
+                };
+                
+                // If we're missing event details, try to fetch them directly
+                if (!eventInfo.eventTitle || eventInfo.eventTitle === 'Unknown Event') {
+                  try {
+                    const eventResponse = await myTicketService.getEventDetails(ticket.eventID);
+                    if (eventResponse && eventResponse.EventResponse) {
+                      eventInfo = {
+                        eventTitle: eventResponse.EventResponse.Artist || eventInfo.eventTitle,
+                        eventDate: eventResponse.EventResponse.EventDate || eventInfo.eventDate,
+                        eventTime: eventResponse.EventResponse.EventTime || eventInfo.eventTime
+                      };
+                    }
+                  } catch (err) {
+                    console.error(`Error fetching event details for ticket ${ticket.ticketID}:`, err);
+                  }
+                }
+                
+                // Add eventTitle and other details from the transaction
+                return {
+                  ...ticket,
+                  eventTitle: eventInfo.eventTitle,
+                  eventDate: eventInfo.eventDate,
+                  eventTime: eventInfo.eventTime,
+                  tradability: tradability,
+                  transactionID: txn.transactionID
+                };
+              })
+            );
+            
+            ticketDetails.push(...verifiedTickets);
+          }
+        }
+        
+        // Filter to ensure we only have tickets belonging to the current user
+        const userOwnedTickets = ticketDetails.filter(ticket => ticket.userID === backendUserId);
+        console.log(`TradingPage: Filtered ${ticketDetails.length} total tickets to ${userOwnedTickets.length} owned by user ${backendUserId}`);
+        
+        // Log all ticket details
+        userOwnedTickets.forEach(ticket => {
+          console.log(`TradingPage: User ticket - ${ticket.ticketID}, Seat ${ticket.seatID}, User ${ticket.userID}, EventTitle: ${ticket.eventTitle}`);
+        });
+        
+        // Remove duplicate tickets by keeping only one instance of each seatID
+        const uniqueTickets = Array.from(
+          userOwnedTickets.reduce((map, ticket) => {
+            if (!map.has(ticket.seatID)) {
+              map.set(ticket.seatID, ticket);
+            }
+            return map;
+          }, new Map()).values()
+        );
+        
+        console.log('Unique tickets:', uniqueTickets.length);
+        setUserTickets(uniqueTickets);
+        
+        // If a ticket was passed via location state, pre-select it
+        if (location.state?.ticket) {
+          const preSelectedTicket = location.state.ticket;
+          
+          // Find the matching ticket in our fetched data
+          const matchedTicket = uniqueTickets.find(t => t.ticketID === preSelectedTicket.ticketID);
+          if (matchedTicket) {
+            setSelectedTicket(matchedTicket);
+            setSelectedSeat(matchedTicket.seatID);
+            fetchAvailableTicketsForTrade(matchedTicket, matchedTicket.seatID);
+          }
+        }
       } catch (error) {
         console.error('Error fetching user tickets:', error);
+        setNotification({
+          type: 'error',
+          message: 'Failed to load your tickets'
+        });
+      } finally {
         setIsLoading(false);
       }
     };
     
     fetchUserTickets();
-  }, [location.state, fetchAvailableTicketsForTrade]);
+  }, [backendUserId, location.state, fetchAvailableTicketsForTrade]);
 
   const handleTicketSelect = (ticket) => {
     setSelectedTicket(ticket);
-    setSelectedSeat(ticket.seats[0]); // Default to first seat
-    fetchAvailableTicketsForTrade(ticket, ticket.seats[0]);
+    setSelectedSeat(ticket.seatID);
+    fetchAvailableTicketsForTrade(ticket, ticket.seatID);
   };
 
   const handleSeatSelect = (seat) => {
@@ -164,70 +311,101 @@ const TradingPage = () => {
     setShowTradeModal(true);
   };
 
+  // Handle show ticket details in modal
+  const handleShowDetails = (transaction) => {
+    setSelectedTransaction(transaction);
+    setShowDetailsModal(true);
+  };
+
   const confirmTrade = async () => {
-    try {
-      // In a real app, this would be an API call to process the trade
-      /*
-      * MICROSERVICE INTEGRATION POINT:
-      * 
-      * In production, you would call the trading microservice:
-      * const response = await fetch('https://api-gateway.example.com/trading/process', {
-      *   method: 'POST',
-      *   headers: { 
-      *     'Content-Type': 'application/json',
-      *     Authorization: `Bearer ${token}` 
-      *   },
-      *   body: JSON.stringify({
-      *     userTicketId: selectedTicket.id,
-      *     userSeat: selectedSeat,
-      *     tradeTicketId: ticketToTrade.id,
-      *     tradeSeat: ticketToTrade.seats[0]
-      *   })
-      * });
-      */
-      
-      // For demo purposes, go to success page
-      setShowTradeModal(false);
-      navigate('/trade-success', { 
-        state: { 
-          tradeData: {
-            eventName: selectedTicket.eventTitle,
-            tradedTickets: {
-              category: selectedTicket.category,
-              count: 1, // Always trading 1 seat at a time
-              seat: selectedSeat
-            },
-            receivedTickets: {
-              category: ticketToTrade.category,
-              count: 1, // Always trading 1 seat at a time
-              seat: ticketToTrade.seats[0]
-            },
-            tradeDate: new Date().toLocaleDateString()
-          }
-        }
+    // Will be implemented later
+    setShowTradeModal(false);
+    setNotification({
+      type: 'info',
+      message: 'Trade functionality will be implemented in the next phase'
+    });
+  };
+
+  // Add a function to toggle the trade listing status
+  const toggleTradeStatus = async (ticket, e) => {
+    e.stopPropagation(); // Prevent selecting the ticket when clicking the toggle button
+    
+    // First, update the local state immediately for better UX
+    const newStatus = !ticket.listed_for_trade;
+    setUserTickets(prev => prev.map(t => 
+      t.ticketID === ticket.ticketID ? { ...t, listed_for_trade: newStatus } : t
+    ));
+    
+    // Clear any existing notification first
+    setNotification(null);
+    
+    // Show notification after a small delay to ensure animation works properly
+    setTimeout(() => {
+      setNotification({
+        type: 'success',
+        message: newStatus 
+          ? 'Ticket listed for trade' 
+          : 'Ticket removed from trade listing'
       });
+    }, 10);
+    
+    try {
+      // Then perform the API call (async)
+      await myTicketService.toggleTradeStatus(ticket.ticketID, ticket.listed_for_trade);
     } catch (error) {
-      console.error('Error processing trade:', error);
-      setShowTradeModal(false);
+      console.error('Error toggling trade status:', error);
+      
+      // Revert the local state in case of error
+      setUserTickets(prev => prev.map(t => 
+        t.ticketID === ticket.ticketID ? { ...t, listed_for_trade: ticket.listed_for_trade } : t
+      ));
+      
+      // Small delay to ensure animation works properly 
+      setTimeout(() => {
+        // Show error notification
+        setNotification({
+          type: 'error',
+          message: 'Failed to update trade status'
+        });
+      }, 10);
     }
   };
+
+  // Group tickets by transaction and count
+  const groupedTransactions = userTickets.reduce((acc, ticket) => {
+    const txnId = ticket.transactionID;
+    
+    if (!acc[txnId]) {
+      acc[txnId] = {
+        transactionID: txnId,
+        eventTitle: ticket.eventTitle,
+        eventDate: ticket.eventDate,
+        eventTime: ticket.eventTime,
+        eventID: ticket.eventID,
+        tickets: [],
+        numTickets: 0
+      };
+    }
+    
+    acc[txnId].tickets.push(ticket);
+    acc[txnId].numTickets += 1;
+    
+    return acc;
+  }, {});
+  
+  // Convert to array for rendering
+  const transactionGroups = Object.values(groupedTransactions);
 
   // Show a loading state while data is being prepared
   if (isLoading && !userTickets.length) {
     return (
-      <div className="container mx-auto px-4 h-[calc(100vh-64px)] flex flex-col justify-start items-center" style={{ paddingTop: '10vh' }}>
+      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
         <div className="w-full max-w-5xl">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Ticket Trading</h1>
-            <Button 
-              onClick={() => navigate('/my-tickets')}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
-            >
-              Back to My Tickets
-            </Button>
+            <h1 className="text-3xl font-bold text-white">Ticket Trading</h1>
           </div>
           <div className="flex justify-center items-center h-64">
-            <p className="text-lg text-gray-500 dark:text-gray-400">Loading your tickets...</p>
+            <p className="text-lg text-gray-300">Loading your tickets...</p>
           </div>
         </div>
       </div>
@@ -235,203 +413,233 @@ const TradingPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 h-[calc(100vh-64px)] flex flex-col justify-start items-center overflow-y-auto" style={{ paddingTop: '10vh' }}>
+    <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center overflow-y-auto">
       <div className="w-full max-w-5xl">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Ticket Trading</h1>
-          <Button 
-            onClick={() => navigate('/my-tickets')}
-            className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
-          >
-            Back to My Tickets
-          </Button>
+        {/* Updated notification style matching MyTicketsPage */}
+        {notification && (
+          <div className="fixed top-20 right-4 z-50 w-[90%] max-w-sm animate-slide-down">
+            <div className="relative overflow-hidden flex items-center p-4 rounded-lg shadow-lg bg-[#1a2642] border border-blue-900">
+              <div className="mr-3">
+                {notification.type === 'success' ? (
+                  <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                ) : notification.type === 'error' ? (
+                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1 text-white">{notification.message}</div>
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 animate-shrink"
+                style={{ transformOrigin: 'left' }}
+              ></div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-white">Ticket Trading</h1>
         </div>
       
         {/* Trading Rules (Highlighted and Prominent) */}
-        <Card className="p-5 mb-8 bg-gradient-to-r from-blue-500/10 to-blue-600/10 border-2 border-blue-500/30 dark:from-blue-900/20 dark:to-blue-800/20" glowEffect={true}>
-          <h3 className="text-xl text-blue-700 dark:text-blue-300 font-semibold mb-2">Trading Rules</h3>
-          <ul className="list-disc list-inside text-gray-800 dark:text-gray-200 space-y-1 font-medium">
+        <Card className="p-5 mb-8 bg-gradient-to-r from-blue-500/10 to-blue-600/10 border-2 border-blue-500/30">
+          <h3 className="text-xl text-blue-400 font-semibold mb-2">Trading Rules</h3>
+          <ul className="list-disc list-inside text-gray-300 space-y-1 font-medium">
             <li>You can only trade tickets from the same event</li>
             <li>Tickets must be in the same category</li>
             <li>Both parties must agree to the trade</li>
+            <li>Only tradable tickets can be exchanged</li>
           </ul>
         </Card>
         
         {/* User's Tickets Section */}
         <div className="mb-10">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Select a Ticket to Trade</h2>
-          <p className="mb-6 text-gray-600 dark:text-gray-300">
+          <h2 className="text-2xl font-bold text-white mb-4">Select a Ticket to Trade</h2>
+          <p className="mb-6 text-gray-300">
             Click on one of your tickets below to see available trading options.
           </p>
           
-          <div className="flex justify-center">
-            <div className="flex flex-wrap justify-center gap-6 max-w-5xl">
-              {userTickets.map((ticket) => (
-                <div key={ticket.id} onClick={() => handleTicketSelect(ticket)} className="cursor-pointer w-full sm:w-[340px]">
-                  <Card 
-                    className={`overflow-hidden border-2 transition-all duration-200 h-full ${
-                      selectedTicket && selectedTicket.id === ticket.id 
-                        ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
-                        : 'border-transparent hover:border-blue-300'
-                    }`}
-                    glowEffect={selectedTicket && selectedTicket.id === ticket.id}
-                  >
-                    <div className="relative h-48">
-                      <img 
-                        src={ticket.eventImage} 
-                        alt={ticket.eventTitle} 
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-3 right-3">
-                        <Badge 
-                          className={`bg-blue-600 text-white font-medium px-2 py-1`}
-                        >
-                          {ticket.category}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{ticket.eventTitle}</h3>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
-                        {ticket.eventDate} at {ticket.eventTime}
-                      </p>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
-                        {ticket.location}
-                      </p>
-                      
-                      <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-gray-500 dark:text-gray-400 text-sm">Section:</span>
-                          <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.section}</span>
-                        </div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-gray-500 dark:text-gray-400 text-sm">Row:</span>
-                          <span className="text-gray-900 dark:text-white text-sm font-medium">{ticket.row}</span>
-                        </div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-gray-500 dark:text-gray-400 text-sm">Seats:</span>
-                          <span className="text-gray-900 dark:text-white text-sm font-medium">
-                            {ticket.seats.join(', ')}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-center">
-                        <Button 
-                          className={`w-full font-bold ${
-                            selectedTicket && selectedTicket.id === ticket.id 
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-                          }`}
-                        >
-                          {selectedTicket && selectedTicket.id === ticket.id 
-                            ? 'Selected for Trading' 
-                            : 'Select to Trade'}
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              ))}
+          {userTickets.length === 0 ? (
+            <div className="bg-[#1a2642] rounded-lg p-8 text-center">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <p className="text-gray-300 mb-4">You don't have any tickets available for trading.</p>
+              <Button 
+                onClick={() => navigate('/')}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Browse Events
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
+                {transactionGroups.map((transaction) => {
+                  const firstTicket = transaction.tickets[0];
+                  const seatDetails = parseSeatDetails(firstTicket.seatID);
+                  const categoryColor = getCategoryColor(seatDetails?.category);
+                  const categoryName = getCategoryName(seatDetails?.category);
+                  
+                  return (
+                    <div key={transaction.transactionID} className="w-full">
+                      <Card 
+                        className="overflow-hidden border-0 h-full bg-[#1a2642] text-white"
+                      >
+                        <div className="relative">
+                          <img 
+                            src={getEventImage(transaction.eventTitle)}
+                            alt={transaction.eventTitle} 
+                            className="w-full h-48 object-cover"
+                          />
+                          <div className="absolute top-3 right-3">
+                            <Badge 
+                              className={`bg-${categoryColor}-600 text-white font-medium px-2 py-1`}
+                            >
+                              {categoryName}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4">
+                          <h3 className="text-lg font-semibold text-white">{transaction.eventTitle}</h3>
+                          <p className="text-gray-300 text-sm mb-2">
+                            {transaction.eventDate} at {transaction.eventTime}
+                          </p>
+                          
+                          <div className="border-t border-blue-900 pt-3 mb-3">
+                            <div className="flex justify-between mb-1">
+                              <span className="text-gray-400 text-sm">Number of Tickets:</span>
+                              <span className="text-white text-sm font-medium">{transaction.numTickets}</span>
+                            </div>
+                          </div>
+                          
+                          <Button
+                            className="w-full text-sm bg-blue-700 hover:bg-blue-600 text-white"
+                            variant="default"
+                            onClick={() => handleShowDetails(transaction)}
+                          >
+                            Ticket Details
+                          </Button>
+                        </div>
+                      </Card>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Available Tickets Section */}
         {selectedTicket && (
-          <div ref={availableTicketsRef} className="mt-16 border-t border-gray-200 dark:border-gray-700 pt-8">
+          <div ref={availableTicketsRef} className="mt-16 border-t border-gray-700 pt-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-white">
                 Available Trades for Your Ticket
               </h2>
-              <Button 
-                onClick={() => setSelectedTicket(null)}
-                variant="outline"
-                className="text-sm"
-              >
-                Choose a Different Ticket
-              </Button>
             </div>
             
             {/* Selected Ticket Display (Centered) */}
             <div className="flex justify-center mb-8">
               <div className="w-full max-w-3xl">
-                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 text-center">
+                <div className="bg-[#12203f] p-4 rounded-lg">
+                  <h3 className="text-xl font-semibold text-white mb-4 text-center">
                     Your Selected Ticket
                   </h3>
-                  <div className="flex flex-col md:flex-row gap-4 p-3 bg-white dark:bg-gray-700 rounded-lg">
+                  <div className="flex flex-col md:flex-row gap-4 p-3 bg-[#1a2642] rounded-lg">
                     <div className="md:w-1/6">
                       <img 
-                        src={selectedTicket.eventImage} 
+                        src={getEventImage(selectedTicket.eventTitle)}
                         alt={selectedTicket.eventTitle} 
                         className="w-full h-32 object-cover rounded-md"
                       />
                     </div>
                     <div className="md:w-5/6 flex flex-col justify-center">
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">{selectedTicket.eventTitle}</h4>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm">{selectedTicket.eventDate} at {selectedTicket.eventTime}</p>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">{selectedTicket.location}</p>
-                      <div className="flex flex-wrap gap-x-4 text-sm">
-                        <span className="text-gray-600 dark:text-gray-300">
-                          <span className="font-medium">Category:</span> {selectedTicket.category}
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-300">
-                          <span className="font-medium">Section:</span> {selectedTicket.section}
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-300">
-                          <span className="font-medium">Row:</span> {selectedTicket.row}
-                        </span>
+                      <h4 className="text-lg font-bold text-white">{selectedTicket.eventTitle}</h4>
+                      <p className="text-gray-300 text-sm">{selectedTicket.eventDate} at {selectedTicket.eventTime}</p>
+                      <div className="flex flex-wrap gap-x-4 text-sm mt-2">
+                        {(() => {
+                          const seatDetails = parseSeatDetails(selectedSeat);
+                          return (
+                            <>
+                              <span className="text-gray-300">
+                                <span className="font-medium">Category:</span> {getCategoryName(seatDetails?.category)}
+                              </span>
+                              <span className="text-gray-300">
+                                <span className="font-medium">Section:</span> {seatDetails?.section || 'Unknown'}
+                              </span>
+                              <span className="text-gray-300">
+                                <span className="font-medium">Seat:</span> {seatDetails?.seat || 'Unknown'}
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
-                      
-                      {/* Seat Selection for Multiple-Seat Tickets */}
-                      {selectedTicket.seats.length > 1 && (
-                        <div className="mt-4">
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select which seat you want to trade:</p>
-                          <div className="flex gap-2">
-                            {selectedTicket.seats.map(seat => (
-                              <Button 
-                                key={seat}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSeatSelect(seat);
-                                }}
-                                className={`px-4 py-2 ${
-                                  selectedSeat === seat
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
-                                }`}
-                              >
-                                Seat {seat}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                   
+                  {/* Transaction group has multiple tickets */}
+                  {userTickets.filter(t => t.transactionID === selectedTicket.transactionID).length > 1 && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-300 mb-2">Select which ticket you want to trade:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {userTickets
+                          .filter(t => t.transactionID === selectedTicket.transactionID)
+                          .map(ticket => {
+                            const seatDetails = parseSeatDetails(ticket.seatID);
+                            return (
+                              <Button 
+                                key={ticket.ticketID}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSeatSelect(ticket.seatID);
+                                }}
+                                className={`px-4 py-2 ${
+                                  selectedSeat === ticket.seatID
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                                }`}
+                              >
+                                {ticket.listed_for_trade ? 
+                                  `Seat ${seatDetails?.seat || 'Unknown'}` : 
+                                  `Seat ${seatDetails?.seat || 'Unknown'}`}
+                              </Button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Currently Trading Indicator */}
-                  <div className="bg-blue-100 dark:bg-blue-900/20 p-3 rounded-lg mt-4 text-center">
-                    <p className="text-blue-800 dark:text-blue-200 font-medium">
-                      Currently trading: Seat {selectedSeat}
+                  <div className="bg-blue-900/20 p-3 rounded-lg mt-4 text-center">
+                    <p className="text-blue-300 font-medium">
+                      {(() => {
+                        const seatDetails = parseSeatDetails(selectedSeat);
+                        return `Currently trading: Section ${seatDetails?.section || 'Unknown'}, Seat ${seatDetails?.seat || 'Unknown'}`;
+                      })()}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
             
-            {isLoading ? (
+            {isLoadingTrades ? (
               <div className="flex justify-center items-center h-64">
-                <p className="text-lg text-gray-500 dark:text-gray-400">Loading available trades...</p>
+                <p className="text-lg text-gray-300">Loading available trades...</p>
               </div>
             ) : availableTickets.length === 0 ? (
-              <div className="bg-gray-100 dark:bg-gray-800 p-8 text-center rounded-lg">
+              <div className="bg-[#12203f] p-8 text-center rounded-lg">
                 <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                <p className="text-gray-300 mb-4">
                   No tickets available for trade in this category and event.
                 </p>
                 <Button 
@@ -442,116 +650,118 @@ const TradingPage = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {availableTickets.map(ticket => (
-                  <Card key={ticket.id} className="overflow-hidden dark:bg-gray-700" glowEffect={true}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 h-full">
-                      <div className="md:col-span-1">
-                        <div className="h-full relative">
-                          <img 
-                            src={ticket.eventImage} 
-                            alt={ticket.eventTitle} 
-                            className="w-full h-full object-cover aspect-square md:aspect-auto"
-                            style={{ maxHeight: '220px' }}
-                          />
-                          <div className="absolute bottom-2 left-2">
-                            <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
-                              {ticket.category}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="md:col-span-2 p-4 flex flex-col">
-                        <div className="flex justify-between">
-                          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">{ticket.eventTitle}</h3>
-                          <span className="text-blue-600 dark:text-blue-400 font-bold">${ticket.price.toFixed(2)}</span>
-                        </div>
-                        
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">{ticket.eventDate} at {ticket.eventTime}</p>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">{ticket.location}</p>
-                        
-                        <div className="text-sm mb-4">
-                          <div className="flex flex-wrap gap-4">
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Section:</span>
-                              <span className="text-gray-700 dark:text-gray-300 ml-1 font-medium">{ticket.section}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Row:</span>
-                              <span className="text-gray-700 dark:text-gray-300 ml-1 font-medium">{ticket.row}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Seats:</span>
-                              <span className="text-gray-700 dark:text-gray-300 ml-1 font-medium">{ticket.seats.join(', ')}</span>
+              <div>
+                <h2 className="text-2xl font-bold mb-4 text-white text-center">Available Tickets for Trade</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
+                {availableTickets.map(ticket => {
+                  const seatDetails = parseSeatDetails(ticket.seatID);
+                  const categoryName = getCategoryName(seatDetails?.category);
+                  const categoryColor = getCategoryColor(seatDetails?.category);
+                  
+                  return (
+                    <Card key={ticket.ticketID} className="overflow-hidden bg-[#1a2642] border-0 text-white">
+                      <div className="h-full flex flex-col">
+                        <div>
+                          <div className="h-48 relative">
+                            <img 
+                              src={getEventImage(ticket.eventTitle)}
+                              alt={ticket.eventTitle} 
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-3 right-3">
+                              <Badge 
+                                className={`bg-${categoryColor}-600 text-white font-medium px-2 py-1`}
+                              >
+                                {categoryName}
+                              </Badge>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between mt-auto">
-                          <div className="flex items-center">
-                            <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">Owner: {ticket.ownerName}</span>
-                            <div className="flex items-center">
-                              <span className="text-sm text-yellow-500 mr-1">{ticket.ownerRating}</span>
-                              <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                              </svg>
+                        <div className="p-4 flex flex-col flex-grow">
+                          <div className="flex justify-between">
+                            <h3 className="text-lg font-medium text-white mb-1">{ticket.eventTitle}</h3>
+                          </div>
+                          
+                          <p className="text-gray-300 text-sm mb-1">{ticket.eventDate} at {ticket.eventTime}</p>
+                          
+                          <div className="py-2">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400 text-sm">Section:</span>
+                              <span className="text-white text-sm font-medium">{seatDetails?.section || 'Unknown'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400 text-sm">Seat:</span>
+                              <span className="text-white text-sm font-medium">{seatDetails?.seat || 'Unknown'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400 text-sm">Owner ID:</span>
+                              <span className="text-white text-sm font-medium">{ticket.userID}</span>
                             </div>
                           </div>
                           
                           <Button 
                             onClick={() => handleTradeClick(ticket)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full mt-auto py-2 bg-blue-600 hover:bg-blue-700 text-white text-center font-medium"
                           >
                             Trade for This Ticket
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
+                </div>
               </div>
             )}
           </div>
         )}
         
         {/* Trade Confirmation Modal */}
-        {showTradeModal && (
+        {showTradeModal && ticketToTrade && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            <div className="bg-[#1a2642] rounded-lg p-6 max-w-lg w-full border border-blue-900">
+              <h3 className="text-xl font-bold text-white mb-4">
                 Confirm Trade Request
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm mb-2">Your Ticket:</h4>
-                  <p className="text-gray-800 dark:text-gray-200 font-medium">{selectedTicket.eventTitle}</p>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">{selectedTicket.eventDate}</p>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
-                    Section {selectedTicket.section}, Row {selectedTicket.row}, Seat {selectedSeat}
-                  </p>
-                  <p className="text-blue-600 dark:text-blue-400 font-medium">${(selectedTicket.price / selectedTicket.seats.length).toFixed(2)}</p>
+                <div className="bg-[#12203f] p-3 rounded-lg">
+                  <h4 className="font-medium text-white text-sm mb-2">Your Ticket:</h4>
+                  <p className="text-gray-200 font-medium">{selectedTicket.eventTitle}</p>
+                  <p className="text-gray-300 text-sm">{selectedTicket.eventDate}</p>
+                  {(() => {
+                    const seatDetails = parseSeatDetails(selectedSeat);
+                    return (
+                      <p className="text-gray-300 text-sm mb-2">
+                        Section {seatDetails?.section || 'Unknown'}, Seat {seatDetails?.seat || 'Unknown'}
+                      </p>
+                    );
+                  })()}
                 </div>
                 
-                <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm mb-2">Trade For:</h4>
-                  <p className="text-gray-800 dark:text-gray-200 font-medium">{ticketToTrade.eventTitle}</p>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">{ticketToTrade.eventDate}</p>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
-                    Section {ticketToTrade.section}, Row {ticketToTrade.row}, Seat {ticketToTrade.seats[0]}
-                  </p>
-                  <p className="text-blue-600 dark:text-blue-400 font-medium">${ticketToTrade.price.toFixed(2)}</p>
+                <div className="bg-[#12203f] p-3 rounded-lg">
+                  <h4 className="font-medium text-white text-sm mb-2">Trade For:</h4>
+                  <p className="text-gray-200 font-medium">{selectedTicket.eventTitle}</p>
+                  <p className="text-gray-300 text-sm">{selectedTicket.eventDate}</p>
+                  {(() => {
+                    const seatDetails = parseSeatDetails(ticketToTrade.seatID);
+                    return (
+                      <p className="text-gray-300 text-sm mb-2">
+                        Section {seatDetails?.section || 'Unknown'}, Seat {seatDetails?.seat || 'Unknown'}
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
               
-              <div className="bg-blue-100 dark:bg-blue-900/20 p-3 rounded-lg mb-6">
+              <div className="bg-blue-900/20 p-3 rounded-lg mb-6">
                 <div className="flex items-start">
-                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="w-5 h-5 text-blue-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                   <div>
-                    <p className="text-blue-800 dark:text-blue-200 text-sm font-medium">Important Information</p>
-                    <p className="text-blue-700 dark:text-blue-300 text-xs">
+                    <p className="text-blue-300 text-sm font-medium">Important Information</p>
+                    <p className="text-blue-200 text-xs">
                       By confirming this trade, you're initiating a request to trade your ticket. The other ticket owner will need to approve this request. Once approved, the trade is final.
                     </p>
                   </div>
@@ -562,16 +772,128 @@ const TradingPage = () => {
                 <Button 
                   onClick={() => setShowTradeModal(false)}
                   variant="outline"
-                  className="font-medium"
+                  className="font-medium border-gray-400 text-gray-200"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={confirmTrade}
-                  variant="primary"
-                  className="font-bold"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
                 >
                   Confirm Trade Request
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ticket Details Modal */}
+        {showDetailsModal && selectedTransaction && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-[#1e1e24] rounded-lg shadow-lg p-6 max-w-4xl w-full border border-blue-900">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-white">
+                  Ticket Details: {selectedTransaction.eventTitle}
+                </h3>
+                <button 
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="mb-4 p-4 bg-[#12203f] rounded-lg">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">Event:</span>
+                  <span className="text-white font-medium">{selectedTransaction.eventTitle}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">Date & Time:</span>
+                  <span className="text-white">{selectedTransaction.eventDate} at {selectedTransaction.eventTime}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Transaction ID:</span>
+                  <span className="text-white text-sm">{selectedTransaction.transactionID}</span>
+                </div>
+              </div>
+              
+              <h4 className="text-lg font-semibold text-white mb-4">Individual Tickets</h4>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {selectedTransaction.tickets.map(ticket => {
+                  const seatDetails = parseSeatDetails(ticket.seatID);
+                  return (
+                    <Card key={ticket.ticketID} className="overflow-hidden bg-[#12203f] border border-blue-900">
+                      <div className="p-4">
+                        <div className="mb-3 space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">Section:</span>
+                            <span className="text-white text-sm font-medium">{seatDetails?.section || 'Unknown'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">Seat:</span>
+                            <span className="text-white text-sm font-medium">{seatDetails?.seat || 'Unknown'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-400 text-sm">Category:</span>
+                            <span className="text-sm">
+                              <Badge 
+                                className={`bg-${getCategoryColor(seatDetails?.category)}-600 text-white font-medium px-2 py-1`}
+                              >
+                                {getCategoryName(seatDetails?.category)}
+                              </Badge>
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 mt-4">
+                          <Button
+                            className="flex-1 text-sm border-2 border-purple-600 bg-transparent hover:bg-purple-600/10 text-white"
+                            variant="default"
+                            onClick={() => {
+                              setShowDetailsModal(false);
+                              setSelectedTicket(ticket);
+                              setSelectedSeat(ticket.seatID);
+                              fetchAvailableTicketsForTrade(ticket, ticket.seatID);
+                            }}
+                          >
+                            Use for Trade
+                          </Button>
+                          
+                          <Button
+                            className={`flex-1 text-sm ${
+                              ticket.listed_for_trade 
+                                ? 'bg-green-600 hover:bg-green-700' 
+                                : 'bg-[#2d3a51] hover:bg-[#354159]'
+                            } text-white`}
+                            variant="default"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTradeStatus(ticket, e);
+                              setShowDetailsModal(false);
+                            }}
+                          >
+                            {ticket.listed_for_trade ? 'Listed for Trade' : 'List for Trade'}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <Button 
+                  variant="default" 
+                  className="bg-blue-700 hover:bg-blue-600 text-white"
+                  onClick={() => setShowDetailsModal(false)}
+                >
+                  Close
                 </Button>
               </div>
             </div>

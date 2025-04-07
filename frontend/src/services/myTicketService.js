@@ -16,7 +16,10 @@ const myTicketService = {
     getTicketsByTransaction: async (transactionID) => {
         try {
             const response = await apiClient.get(`/tickets/transaction/${transactionID}`)
-            return response.data
+            // Filter tickets to return only those that match the transaction ID
+            const tickets = response.data;
+            console.log(`Raw ticket response for txn ${transactionID}:`, tickets);
+            return tickets;
         }
         catch (error) {
             console.error('Error fetching tickets by transaction:', error)
@@ -48,6 +51,46 @@ const myTicketService = {
         }
         catch (error) {
             console.error('Error listing ticket for trade:', error)
+            throw error
+        }
+    },
+
+    // Unlist a ticket from trade
+    unlistFromTrade: async (ticketID) => {
+        try {
+            const response = await apiClient.put(`/ticket/${ticketID}/list-for-trade`, {
+                listed_for_trade: false
+            })
+            return response.data
+        }
+        catch (error) {
+            console.error('Error unlisting ticket from trade:', error)
+            throw error
+        }
+    },
+
+    // Toggle a ticket's listed_for_trade status
+    toggleTradeStatus: async (ticketID, currentStatus) => {
+        try {
+            const response = await apiClient.put(`/ticket/${ticketID}/list-for-trade`, {
+                listed_for_trade: !currentStatus
+            })
+            return response.data
+        }
+        catch (error) {
+            console.error('Error toggling trade status:', error)
+            throw error
+        }
+    },
+
+    // Get tickets available for trade for a specific event and category
+    getTradeableTickets: async (eventID, category) => {
+        try {
+            const response = await apiClient.get(`/tickets/up-for-trade/${eventID}/${category}`)
+            return response.data
+        }
+        catch (error) {
+            console.error('Error fetching tradeable tickets:', error)
             throw error
         }
     },

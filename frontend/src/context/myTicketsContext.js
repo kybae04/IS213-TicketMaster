@@ -163,9 +163,13 @@ export const MyTicketProvider = ({ children }) => {
         return;
       }
       
+      // Filter tickets to only include those belonging to the current user
+      const userTickets = rawTickets.filter(ticket => ticket.userID === backendUserId);
+      console.log(`Filtered ${rawTickets.length} tickets to ${userTickets.length} for user ${backendUserId}`);
+      
       // Group tickets by transaction
       const grouped = {};
-      rawTickets.forEach(ticket => {
+      userTickets.forEach(ticket => {
         const txn = ticket.transactionID;
         if (!grouped[txn]) {
           grouped[txn] = {
@@ -252,13 +256,30 @@ export const MyTicketProvider = ({ children }) => {
     try {
       console.log(`Fetching ticket details for transaction ${transactionID}`);
       const tickets = await myTicketService.getTicketsByTransaction(transactionID);
+      console.log(`Raw tickets for transaction ${transactionID}:`, tickets.map(t => `${t.ticketID} (user: ${t.userID})`));
+      
+      // Filter tickets to ensure they belong to the current user
+      const userOwnedTickets = tickets.filter(ticket => ticket.userID === backendUserId);
+      console.log(`Filtered ${tickets.length} tickets to ${userOwnedTickets.length} owned by user ${backendUserId} for transaction ${transactionID}`);
+      
+      // Remove any duplicate tickets (by seatID)
+      const uniqueTickets = Array.from(
+        userOwnedTickets.reduce((map, ticket) => {
+          if (!map.has(ticket.seatID)) {
+            map.set(ticket.seatID, ticket);
+          }
+          return map;
+        }, new Map()
+      ).values());
+      
+      console.log(`Reduced to ${uniqueTickets.length} unique tickets for transaction ${transactionID}`);
       
       // Find the transaction to get event details
       const transaction = state.transactions.find(t => t.transactionID === transactionID);
       
       if (transaction) {
         // Enrich tickets with event information
-        const enrichedTickets = tickets.map(ticket => ({
+        const enrichedTickets = uniqueTickets.map(ticket => ({
           ...ticket,
           eventTitle: transaction.eventTitle,
           eventDate: transaction.eventDate,
@@ -312,7 +333,7 @@ export const MyTicketProvider = ({ children }) => {
       // Clear the pending flag
       pendingFetchesRef.current[`ticketDetails_${transactionID}`] = false;
     }
-  }, [state.transactions]);
+  }, [state.transactions, backendUserId]);
 
   // List a ticket for trade
   const listForTrade = useCallback(async (ticketId, transactionId) => {
