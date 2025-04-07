@@ -118,10 +118,10 @@ const eventService = {
           // Note: For the events list, we use placeholder pricing
           // The actual detailed pricing will be fetched when viewing a specific event
           const placeholderPrices = {
-            VIP: 399,
-            CAT1: 299,
-            CAT2: 199,
-            CAT3: 99
+            vip: 399,
+            cat_1: 299,
+            cat_2: 199,
+            cat_3: 99
           };
 
           // Create a properly formatted event object with exact values from API
