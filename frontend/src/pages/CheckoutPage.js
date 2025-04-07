@@ -3,11 +3,13 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { useAuth } from '../context/AuthContext';
+import { useBuyTicket } from '../context/buyTicketContext';
 
 const CheckoutPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { confirmPayment, timeout } = useBuyTicket();
   const [orderData, setOrderData] = useState(null);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -40,8 +42,17 @@ const CheckoutPage = () => {
       setTimerExpired(true);
       // Navigate back to the event page when timer expires
       if (orderData) {
-        alert("Your checkout session has expired. You will be redirected back to the event page.");
-        navigate(`/event/${orderData.eventId}`);
+        console.log('Timer expired. calling timeout function...')
+        timeout(orderData.eventId, orderData.category)
+          .then(() => {
+            alert("Your checkout session has expired. You will be redirected back to the event page.");
+            navigate(`/event/${orderData.eventId}`);
+          })
+          .catch((error) => {
+            console.error('Error during timeout:', error);
+            alert("An error occurred. Redirecting to the event page.");
+            navigate(`/event/${orderData.eventId}`);
+          })
       } else {
         navigate('/');
       }
@@ -53,18 +64,18 @@ const CheckoutPage = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, navigate, orderData]);
+  }, [timeLeft, navigate, orderData, timeout]);
 
   useEffect(() => {
     // Get order data from navigation state
     if (location.state?.orderData) {
       const rawOrderData = location.state.orderData;
-      
+
       // Calculate fees
       const subtotal = rawOrderData.totalPrice;
       const serviceFee = rawOrderData.seatQuantity * 10; // $10 service fee per ticket
       const total = subtotal + serviceFee;
-      
+
       // Create enhanced order data with calculated fees
       const enhancedOrderData = {
         ...rawOrderData,
@@ -75,18 +86,18 @@ const CheckoutPage = () => {
         pricePerTicket: rawOrderData.pricePerSeat,
         category: rawOrderData.selectedCategory
       };
-      
+
       setOrderData(enhancedOrderData);
     } else {
       // If no order data, navigate back to home
       navigate('/');
     }
-    
+
     // If user is authenticated, pre-fill user details
     if (isAuthenticated && user) {
       // Split the name if available
       const nameParts = user?.user_metadata?.name?.split(' ') || [];
-      
+
       setFormData(prev => ({
         ...prev,
         firstName: nameParts[0] || '',
@@ -94,7 +105,7 @@ const CheckoutPage = () => {
         email: user.email || ''
       }));
     }
-    
+
     /*
     * MICROSERVICE INTEGRATION POINT:
     * 
@@ -116,11 +127,11 @@ const CheckoutPage = () => {
     *   }
     * };
     */
-    
+
     // Reset the timer when the page loads
     setTimeLeft(5 * 60);
     setTimerExpired(false);
-    
+
   }, [location, navigate, isAuthenticated, user]);
 
   const handleInputChange = (e) => {
@@ -129,7 +140,7 @@ const CheckoutPage = () => {
       ...formData,
       [name]: value
     });
-    
+
     // Clear error when field is edited
     if (errors[name]) {
       setErrors({
@@ -141,7 +152,7 @@ const CheckoutPage = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Only check if required fields are present, no format validation
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
@@ -152,33 +163,35 @@ const CheckoutPage = () => {
     if (!formData.billingAddress.trim()) newErrors.billingAddress = 'Address is required';
     if (!formData.city.trim()) newErrors.city = 'City is required';
     if (!formData.postalCode.trim()) newErrors.postalCode = 'Postal code is required';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       // Form has errors
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       // Simulate API call
-      
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Generate a random confirmation number
+      console.log("Confirming payment...")
+      const paymentResponse = await confirmPayment(orderData.eventId, orderData.category, orderData.seatCount)
+      console.log('Payment confirmed:', paymentResponse)
+      // // Simulate processing time
+      // await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // // Generate a random confirmation number
       const confirmationNumber = 'TM-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-      
-      // Clear the timer by setting it to a value that won't trigger expiration
-      setTimeLeft(999999);
-      
+
+      // // Clear the timer by setting it to a value that won't trigger expiration
+      // setTimeLeft(999999);
+
       // Navigate to confirmation page
       navigate('/payment-confirmation', {
         state: {
@@ -208,7 +221,7 @@ const CheckoutPage = () => {
   return (
     <>
       <h1 className="text-3xl font-bold text-center mb-4 text-gray-900 dark:text-white mt-4">Checkout</h1>
-      
+
       {/* Checkout Timer */}
       <div className="max-w-lg mx-auto mb-6">
         <div className={`flex items-center justify-center p-3 rounded-lg ${timeLeft <= 60 ? 'bg-red-600/20' : 'bg-blue-600/20'}`}>
@@ -220,12 +233,12 @@ const CheckoutPage = () => {
           </span>
         </div>
       </div>
-      
+
       {!isAuthenticated && (
         <div className="mb-8 bg-gray-800 p-4 rounded-lg text-center">
           <p className="text-white mb-3">Sign in to auto-fill your information and access your saved payment methods.</p>
-          <Link 
-            to="/login" 
+          <Link
+            to="/login"
             state={{ returnTo: location.pathname, orderData }}
             className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           >
@@ -233,21 +246,21 @@ const CheckoutPage = () => {
           </Link>
         </div>
       )}
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Order Summary */}
         <div className="lg:col-span-1">
           <Card className="p-6 bg-gray-800 border border-blue-500 mb-6 sticky top-8">
             <h2 className="text-xl font-semibold text-blue-400 mb-4">Order Summary</h2>
-            
+
             <div className="mb-4">
               <h3 className="text-lg font-medium text-white mb-2">{orderData.eventTitle}</h3>
               <p className="text-gray-300 mb-1">{orderData.eventDate} at {orderData.eventTime}</p>
               <p className="text-gray-300 mb-3">{orderData.location}</p>
             </div>
-            
+
             <div className="border-t border-blue-500/30 my-3"></div>
-            
+
             <div className="flex justify-between mb-1">
               <span className="text-gray-300">Category:</span>
               <span className="text-white font-medium">{orderData.category}</span>
@@ -275,7 +288,7 @@ const CheckoutPage = () => {
             </div>
           </Card>
         </div>
-        
+
         {/* Payment Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit}>
@@ -283,11 +296,11 @@ const CheckoutPage = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Customer Information
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label 
-                    htmlFor="firstName" 
+                  <label
+                    htmlFor="firstName"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     First Name *
@@ -298,18 +311,17 @@ const CheckoutPage = () => {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.firstName && (
                     <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label 
-                    htmlFor="lastName" 
+                  <label
+                    htmlFor="lastName"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Last Name *
@@ -320,18 +332,17 @@ const CheckoutPage = () => {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.lastName && (
                     <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label 
-                    htmlFor="email" 
+                  <label
+                    htmlFor="email"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Email *
@@ -342,18 +353,17 @@ const CheckoutPage = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.email && (
                     <p className="text-red-500 text-xs mt-1">{errors.email}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label 
-                    htmlFor="phoneNumber" 
+                  <label
+                    htmlFor="phoneNumber"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Phone Number *
@@ -365,9 +375,8 @@ const CheckoutPage = () => {
                     placeholder="(123) 456-7890"
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.phoneNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.phoneNumber && (
                     <p className="text-red-500 text-xs mt-1">{errors.phoneNumber}</p>
@@ -375,15 +384,15 @@ const CheckoutPage = () => {
                 </div>
               </div>
             </Card>
-            
+
             <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Payment Information
               </h2>
-              
+
               <div className="mb-4">
-                <label 
-                  htmlFor="cardNumber" 
+                <label
+                  htmlFor="cardNumber"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Card Number *
@@ -395,19 +404,18 @@ const CheckoutPage = () => {
                   placeholder="1234 5678 9012 3456"
                   value={formData.cardNumber}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 rounded-md border ${
-                    errors.cardNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                  className={`w-full px-4 py-2 rounded-md border ${errors.cardNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                 />
                 {errors.cardNumber && (
                   <p className="text-red-500 text-xs mt-1">{errors.cardNumber}</p>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label 
-                    htmlFor="expiryDate" 
+                  <label
+                    htmlFor="expiryDate"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Expiry Date (MM/YY) *
@@ -419,18 +427,17 @@ const CheckoutPage = () => {
                     placeholder="MM/YY"
                     value={formData.expiryDate}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.expiryDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.expiryDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.expiryDate && (
                     <p className="text-red-500 text-xs mt-1">{errors.expiryDate}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label 
-                    htmlFor="cvv" 
+                  <label
+                    htmlFor="cvv"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     CVV *
@@ -442,9 +449,8 @@ const CheckoutPage = () => {
                     placeholder="123"
                     value={formData.cvv}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.cvv ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.cvv ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.cvv && (
                     <p className="text-red-500 text-xs mt-1">{errors.cvv}</p>
@@ -452,15 +458,15 @@ const CheckoutPage = () => {
                 </div>
               </div>
             </Card>
-            
+
             <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Billing Address
               </h2>
-              
+
               <div className="mb-4">
-                <label 
-                  htmlFor="billingAddress" 
+                <label
+                  htmlFor="billingAddress"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Address *
@@ -471,19 +477,18 @@ const CheckoutPage = () => {
                   name="billingAddress"
                   value={formData.billingAddress}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 rounded-md border ${
-                    errors.billingAddress ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                  className={`w-full px-4 py-2 rounded-md border ${errors.billingAddress ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                 />
                 {errors.billingAddress && (
                   <p className="text-red-500 text-xs mt-1">{errors.billingAddress}</p>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label 
-                    htmlFor="city" 
+                  <label
+                    htmlFor="city"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     City *
@@ -494,18 +499,17 @@ const CheckoutPage = () => {
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.city ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.city ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.city && (
                     <p className="text-red-500 text-xs mt-1">{errors.city}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label 
-                    htmlFor="postalCode" 
+                  <label
+                    htmlFor="postalCode"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Postal Code *
@@ -516,18 +520,17 @@ const CheckoutPage = () => {
                     name="postalCode"
                     value={formData.postalCode}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${
-                      errors.postalCode ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.postalCode ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   />
                   {errors.postalCode && (
                     <p className="text-red-500 text-xs mt-1">{errors.postalCode}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <label 
-                    htmlFor="country" 
+                  <label
+                    htmlFor="country"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Country *
@@ -552,13 +555,13 @@ const CheckoutPage = () => {
                 </div>
               </div>
             </Card>
-            
+
             {errors.form && (
               <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
                 {errors.form}
               </div>
             )}
-            
+
             <div className="flex justify-end mb-8">
               <Button
                 type="submit"

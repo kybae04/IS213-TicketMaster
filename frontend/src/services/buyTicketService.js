@@ -30,7 +30,8 @@ const buyTicketService = {
         try {
             const response = await apiClient.post(`/purchase/${eventID}/${categoryID}`, {
                 userID: userID,
-                quantity: quantity
+                quantity: quantity,
+                source: 'tok_visa'
             });
             return response.data;
         } catch (error) {
