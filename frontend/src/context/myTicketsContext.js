@@ -93,6 +93,25 @@ const myTicketReducer = (state, action) => {
           }
         }
       };
+    case 'UPDATE_TICKET_TRADE_STATUS':
+      if (!state.ticketDetails[action.payload.transactionId] || 
+          !state.ticketDetails[action.payload.transactionId].data) {
+        return state;
+      }
+      return {
+        ...state,
+        ticketDetails: {
+          ...state.ticketDetails,
+          [action.payload.transactionId]: {
+            ...state.ticketDetails[action.payload.transactionId],
+            data: state.ticketDetails[action.payload.transactionId].data.map(ticket => 
+              ticket.ticketID === action.payload.ticketId 
+                ? { ...ticket, listed_for_trade: true }
+                : ticket
+            )
+          }
+        }
+      };
     default:
       return state;
   }
@@ -295,6 +314,27 @@ export const MyTicketProvider = ({ children }) => {
     }
   }, [state.transactions]);
 
+  // List a ticket for trade
+  const listForTrade = useCallback(async (ticketId, transactionId) => {
+    try {
+      await myTicketService.listForTrade(ticketId);
+      
+      // Update the state to reflect the changed status
+      dispatch({
+        type: 'UPDATE_TICKET_TRADE_STATUS',
+        payload: {
+          transactionId,
+          ticketId
+        }
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error(`Error listing ticket ${ticketId} for trade:`, error);
+      return { success: false, error: error.message || 'Failed to list ticket for trade' };
+    }
+  }, []);
+
   // Fetch tickets once when the component mounts or when the user changes
   useEffect(() => {
     // Only fetch if we have a user ID and it has changed, or if we haven't done the initial fetch
@@ -312,7 +352,8 @@ export const MyTicketProvider = ({ children }) => {
       value={{
         ...state,
         fetchGroupedTickets,
-        fetchTicketDetails
+        fetchTicketDetails,
+        listForTrade
       }}
     >
       {children}

@@ -38,6 +38,20 @@ const myTicketService = {
         }
     },
 
+    // List a ticket for trade
+    listForTrade: async (ticketID) => {
+        try {
+            const response = await apiClient.put(`/ticket/${ticketID}/list-for-trade`, {
+                listed_for_trade: true
+            })
+            return response.data
+        }
+        catch (error) {
+            console.error('Error listing ticket for trade:', error)
+            throw error
+        }
+    },
+
     // getSeatDetails: async (seatID) => {
     //     try {
     //         const response = await apiClient.get(`/seat/details/${seatID}`)

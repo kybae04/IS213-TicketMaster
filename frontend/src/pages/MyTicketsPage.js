@@ -35,13 +35,15 @@ const MyTicketsPage = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [notification, setNotification] = useState(null);
   const { 
     transactions, 
     fetchGroupedTickets, 
     loading, 
     error, 
     ticketDetails,
-    fetchTicketDetails 
+    fetchTicketDetails,
+    listForTrade 
   } = useMyTickets();
   const { checkRefundEligibility, cancelTicket } = useCancel();
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -50,6 +52,16 @@ const MyTicketsPage = () => {
   useEffect(() => {
     fetchGroupedTickets();
   }, [fetchGroupedTickets]);
+
+  // Handle notification timeout
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Group transactions by status
   const activeTransactions = transactions.filter(txn => txn.status !== 'voided');
@@ -106,9 +118,28 @@ const MyTicketsPage = () => {
   };
 
   // Handle listing a ticket for trade
-  const handleListForTrade = (ticket) => {
-    console.log('List for trade:', ticket);
-    // We'll implement this in the next step
+  const handleListForTrade = async (ticket) => {
+    try {
+      const result = await listForTrade(ticket.ticketID, selectedTransaction.transactionID);
+      
+      if (result.success) {
+        setNotification({
+          type: 'success',
+          message: 'Ticket successfully listed for trade!'
+        });
+      } else {
+        setNotification({
+          type: 'error',
+          message: result.error || 'Failed to list ticket for trade'
+        });
+      }
+    } catch (error) {
+      console.error('Error listing ticket for trade:', error);
+      setNotification({
+        type: 'error',
+        message: error.message || 'An error occurred'
+      });
+    }
   };
 
   if (loading) {
@@ -240,6 +271,26 @@ const MyTicketsPage = () => {
 
   return (
     <div className="bg-[#121a2f] text-white min-h-[calc(100vh-64px)]">
+      {/* Toast notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg transition-all transform translate-y-0 opacity-100 ${
+          notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        }`}>
+          <div className="flex items-center">
+            {notification.type === 'success' ? (
+              <svg className="w-6 h-6 mr-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6 mr-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <p className="text-white font-medium">{notification.message}</p>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 mb-8 pt-10">
         <h1 className="text-3xl font-bold text-white text-center">My Tickets</h1>
       </div>
@@ -389,14 +440,30 @@ const MyTicketsPage = () => {
                             
                             {ticket.status !== 'voided' && ticket.tradability?.tradable && (
                               <Button
-                                className="flex-1 text-sm bg-blue-700 hover:bg-blue-600 text-white"
+                                className={`flex-1 text-sm ${
+                                  ticket.listed_for_trade 
+                                    ? 'bg-green-600 hover:bg-green-600 cursor-default' 
+                                    : 'bg-blue-700 hover:bg-blue-600'
+                                } text-white`}
                                 variant="default"
                                 onClick={() => {
-                                  setShowDetailsModal(false);
-                                  handleListForTrade(ticket);
+                                  if (!ticket.listed_for_trade) {
+                                    setShowDetailsModal(false);
+                                    handleListForTrade(ticket);
+                                  }
                                 }}
+                                disabled={ticket.listed_for_trade}
                               >
-                                List for Trade
+                                {ticket.listed_for_trade ? (
+                                  <span className="flex items-center justify-center">
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Listed for Trade
+                                  </span>
+                                ) : (
+                                  'List for Trade'
+                                )}
                               </Button>
                             )}
                           </div>
