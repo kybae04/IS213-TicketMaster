@@ -1,17 +1,12 @@
 import apiClient from "./api";
 
 const cancelService = {
-    /**
-   * Verifies if a ticket is tradable by checking refund eligibility
-   * @param {string|number} txnId - The transaction ID of the ticket
-   * @returns {Promise<Object>} The response object with refund eligibility
-   */
-  verifyRefundEligibility: async (txnID) => {
+  verifyRefundEligibility: async (eventID, userID) => {
     try {
-        const response = await apiClient.get(`/refund-eligibility/${txnID}`);
+        const response = await apiClient.get(`/refund-eligibility/${eventID}?userID=${userID}`);
         return response.data;
     } catch (error) {
-        console.error(`Error verifying ticket tradability for txnID ${txnID}:`, error);
+        console.error(`Error verifying ticket tradability for eventID ${eventID}:`, error);
         throw error;
     }
   },
