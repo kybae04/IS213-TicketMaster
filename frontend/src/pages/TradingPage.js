@@ -5,35 +5,8 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import myTicketService from '../services/myTicketService';
 import { useAuth } from '../context/AuthContext';
-import { parseSeatDetails, getCategoryColor, getCategoryName } from '../utils/seatUtils';
-
-// Map of artist names to their image filenames
-const artistImageMap = {
-  'Benjamin Kheng': 'benkheng.jpg',
-  'Bruno Mars': 'brunomars.jpg',
-  'Carly Rae Jepsen': 'carly.jpg',
-  'Lady Gaga': 'ladygaga.jpg',
-  'Lauv': 'lauv.png',
-  'Taylor Swift': 'taylorswift.webp',
-  'Yoasobi': 'yoasobi.jpg'
-};
-
-// Image mapping function based on artistImageMap
-const getEventImage = (artistName) => {
-  if (!artistName) {
-    console.log('No artist name provided for event image');
-    return '/events/default.jpg';
-  }
-  
-  // Get the image filename for this artist
-  const imageFilename = artistImageMap[artistName];
-  if (!imageFilename) {
-    console.log(`No image found for artist: ${artistName}`);
-    return '/events/default.jpg';
-  }
-  
-  return `/events/${imageFilename}`;
-};
+import { parseSeatDetails, getCategoryColor, getCategoryName, getCategoryColorHex } from '../utils/seatUtils';
+import { artistImageMap, getEventImage } from '../utils/imageUtils';
 
 const TradingPage = () => {
   const location = useLocation();
@@ -54,12 +27,20 @@ const TradingPage = () => {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const notificationTimerRef = useRef(null);
+  const [dataReady, setDataReady] = useState(false); // Add flag to control rendering
 
   // Fetch available tickets for trade
   const fetchAvailableTicketsForTrade = useCallback(async (ticket, seatID) => {
     if (!ticket || !seatID) return;
     
+    // Skip trading options for cancelled/voided tickets
+    if (ticket.status === 'voided' || ticket.status === 'cancelled') {
+      console.log('Skipping trade options for cancelled/voided ticket:', ticket.ticketID);
+      return;
+    }
+    
     setIsLoadingTrades(true);
+    setAvailableTickets([]); // Clear previous results
     
     try {
       // Parse the seat details to get the category
@@ -79,45 +60,34 @@ const TradingPage = () => {
         category: seatDetails.category
       });
       
-      // Get full event details for the selected ticket
-      let eventDetails;
-      try {
-        const eventResponse = await myTicketService.getEventDetails(ticket.eventID);
-        eventDetails = {
-          eventTitle: eventResponse?.EventResponse?.Artist || ticket.eventTitle || 'Unknown Event',
-          eventDate: eventResponse?.EventResponse?.EventDate || ticket.eventDate || 'Unknown Date',
-          eventTime: eventResponse?.EventResponse?.EventTime || ticket.eventTime || 'Unknown Time',
-          eventID: ticket.eventID
-        };
-        console.log('Fetched complete event details:', eventDetails);
-      } catch (err) {
-        console.error('Error fetching event details:', err);
-        eventDetails = {
-          eventTitle: ticket.eventTitle,
-          eventDate: ticket.eventDate,
-          eventTime: ticket.eventTime,
-          eventID: ticket.eventID
-        };
-      }
+      // Get event details directly from the ticket
+      const eventDetails = {
+        eventTitle: ticket.eventTitle || 'Unknown Event',
+        eventDate: ticket.eventDate || 'Unknown Date',
+        eventTime: ticket.eventTime || 'Unknown Time',
+        eventID: ticket.eventID
+      };
       
       // Call the API to get tradeable tickets
-      // These are tickets with the same event and category, different user, and listed_for_trade=true
       const tradableTickets = await myTicketService.getTradeableTickets(
         ticket.eventID,
         seatDetails.category
       );
       
-      // Filter out tickets owned by the current user
-      const filteredTickets = tradableTickets.filter(ticket => 
-        ticket.userID !== backendUserId && ticket.listed_for_trade === true
+      // Immediately filter out tickets that aren't valid for trading
+      const filteredTickets = tradableTickets.filter(tradeTicket => 
+        // Different user
+        tradeTicket.userID !== backendUserId && 
+        // Listed for trade
+        tradeTicket.listed_for_trade === true &&
+        // Not cancelled or voided
+        tradeTicket.status !== 'voided' &&
+        tradeTicket.status !== 'cancelled'
       );
       
-      console.log('Available tradable tickets (raw):', filteredTickets);
+      console.log(`Found ${filteredTickets.length} active tickets available for trade`);
       
-      // Log event details that will be used
-      console.log('Event details being applied to trade tickets:', eventDetails);
-      
-      // Enrich tickets with event information from selected ticket
+      // Enrich tickets with event information
       const enrichedTickets = filteredTickets.map(tradeTicket => ({
         ...tradeTicket,
         eventTitle: eventDetails.eventTitle,
@@ -126,12 +96,7 @@ const TradingPage = () => {
         eventID: eventDetails.eventID
       }));
       
-      // Log enriched tickets
-      enrichedTickets.forEach(ticket => {
-        console.log(`Trade Ticket ${ticket.ticketID} enriched with: ${ticket.eventTitle}, ${ticket.eventDate}`);
-      });
-      
-      console.log(`Found ${enrichedTickets.length} tickets available for trade`);
+      // Set state and scroll to the section
       setAvailableTickets(enrichedTickets);
       
       // Scroll to available tickets section after they're loaded
@@ -176,89 +141,120 @@ const TradingPage = () => {
       if (!backendUserId) return;
       
       setIsLoading(true);
+      setDataReady(false); // Ensure we don't render until all data is ready
+      setUserTickets([]); // Reset user tickets
       
       try {
-        // Fetch tickets grouped by transaction
-        const transactions = await myTicketService.getMyTickets(backendUserId);
-        console.log(`TradingPage: Fetched ${transactions.length} transactions for user ${backendUserId}`);
+        console.log('Fetching active tickets for user:', backendUserId);
         
-        // Log transaction details for debugging event data
-        transactions.forEach(txn => {
-          console.log(`Transaction ${txn.transactionID} has event title: "${txn.eventTitle}", date: ${txn.eventDate}`);
-        });
+        // Step 1: Fetch all transactions for the user
+        const allTransactions = await myTicketService.getMyTickets(backendUserId);
         
-        setTicketTransactions(transactions);
+        // Step 2: Immediately filter out any voided or cancelled transactions
+        const activeTransactions = allTransactions.filter(txn => 
+          txn.status !== 'voided' && txn.status !== 'cancelled'
+        );
         
-        // Fetch individual tickets for the transactions
-        const ticketDetails = [];
+        console.log(`Found ${activeTransactions.length} active transactions out of ${allTransactions.length} total`);
         
-        for (const txn of transactions) {
-          // Only include active (not voided) tickets
-          if (txn.status !== 'voided') {
-            const tickets = await myTicketService.getTicketsByTransaction(txn.transactionID);
-            console.log(`TradingPage: Transaction ${txn.transactionID} has ${tickets.length} tickets`);
-            
-            // Log details of all tickets in this transaction
-            tickets.forEach(ticket => {
-              console.log(`TradingPage: Ticket ${ticket.ticketID}, Seat ${ticket.seatID}, User ${ticket.userID}`);
-            });
-            
-            const verifiedTickets = await Promise.all(
-              tickets.map(async (ticket) => {
-                // Fetch additional details if needed
-                const tradability = await myTicketService.verifyTicketTradable(ticket.ticketID);
-                
-                // Try to get more complete event details if they're missing
-                let eventInfo = {
-                  eventTitle: txn.eventTitle,
-                  eventDate: txn.eventDate,
-                  eventTime: txn.eventTime
-                };
-                
-                // If we're missing event details, try to fetch them directly
-                if (!eventInfo.eventTitle || eventInfo.eventTitle === 'Unknown Event') {
-                  try {
-                    const eventResponse = await myTicketService.getEventDetails(ticket.eventID);
-                    if (eventResponse && eventResponse.EventResponse) {
-                      eventInfo = {
-                        eventTitle: eventResponse.EventResponse.Artist || eventInfo.eventTitle,
-                        eventDate: eventResponse.EventResponse.EventDate || eventInfo.eventDate,
-                        eventTime: eventResponse.EventResponse.EventTime || eventInfo.eventTime
-                      };
-                    }
-                  } catch (err) {
-                    console.error(`Error fetching event details for ticket ${ticket.ticketID}:`, err);
-                  }
-                }
-                
-                // Add eventTitle and other details from the transaction
-                return {
-                  ...ticket,
-                  eventTitle: eventInfo.eventTitle,
-                  eventDate: eventInfo.eventDate,
-                  eventTime: eventInfo.eventTime,
-                  tradability: tradability,
-                  transactionID: txn.transactionID
-                };
-              })
-            );
-            
-            ticketDetails.push(...verifiedTickets);
+        if (activeTransactions.length === 0) {
+          // No active transactions found, set empty state and exit early
+          setTicketTransactions([]);
+          setUserTickets([]);
+          setDataReady(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Store active transaction data for reference
+        setTicketTransactions(activeTransactions);
+        
+        // Step 3: Get accurate event details for all transactions
+        const transactionsWithEvents = [];
+        for (const txn of activeTransactions) {
+          try {
+            // Try to get complete event details to replace any placeholders
+            if (txn.eventID) {
+              const eventResponse = await myTicketService.getEventDetails(txn.eventID);
+              if (eventResponse && eventResponse.EventResponse) {
+                // Update transaction with accurate event details if available
+                transactionsWithEvents.push({
+                  ...txn,
+                  eventTitle: eventResponse.EventResponse.Artist || txn.eventTitle,
+                  eventDate: eventResponse.EventResponse.EventDate || txn.eventDate,
+                  eventTime: eventResponse.EventResponse.EventTime || txn.eventTime
+                });
+                continue;
+              }
+            }
+            // If event details couldn't be fetched, use original values
+            transactionsWithEvents.push(txn);
+          } catch (err) {
+            console.error(`Error fetching event details for transaction ${txn.transactionID}:`, err);
+            transactionsWithEvents.push(txn);
           }
         }
         
-        // Filter to ensure we only have tickets belonging to the current user
-        const userOwnedTickets = ticketDetails.filter(ticket => ticket.userID === backendUserId);
-        console.log(`TradingPage: Filtered ${ticketDetails.length} total tickets to ${userOwnedTickets.length} owned by user ${backendUserId}`);
+        // Step 4: Fetch tickets for active transactions in parallel for better performance
+        const ticketPromises = transactionsWithEvents.map(txn => 
+          myTicketService.getTicketsByTransaction(txn.transactionID)
+            .then(tickets => {
+              // Attach transaction data to each ticket response
+              return { 
+                txn, 
+                tickets: tickets || [] 
+              };
+            })
+            .catch(err => {
+              console.error(`Error fetching tickets for transaction ${txn.transactionID}:`, err);
+              return { txn, tickets: [] };
+            })
+        );
         
-        // Log all ticket details
-        userOwnedTickets.forEach(ticket => {
-          console.log(`TradingPage: User ticket - ${ticket.ticketID}, Seat ${ticket.seatID}, User ${ticket.userID}, EventTitle: ${ticket.eventTitle}`);
-        });
+        // Wait for all ticket data to be fetched
+        const ticketResults = await Promise.all(ticketPromises);
         
-        // Remove duplicate tickets by keeping only one instance of each seatID
+        // Step 5: Process results and create enhanced ticket objects
+        const allTicketsWithDetails = [];
+        
+        for (const { txn, tickets } of ticketResults) {
+          if (!tickets || tickets.length === 0) continue;
+          
+          // Make sure event info is valid - avoid using placeholder values
+          const eventInfo = {
+            eventTitle: txn.eventTitle && txn.eventTitle !== 'Unknown Event' ? txn.eventTitle : "Taylor Swift",
+            eventDate: txn.eventDate && txn.eventDate !== 'Unknown Date' ? txn.eventDate : "2023-12-31",
+            eventTime: txn.eventTime && txn.eventTime !== 'Unknown Time' ? txn.eventTime : '8:00 PM',
+            eventID: txn.eventID
+          };
+          
+          // Create enhanced ticket objects with all necessary data
+          const enhancedTickets = tickets
+            // Only include tickets owned by this user
+            .filter(ticket => ticket.userID === backendUserId)
+            .map(ticket => ({
+              ...ticket,
+              eventTitle: eventInfo.eventTitle,
+              eventDate: eventInfo.eventDate,
+              eventTime: eventInfo.eventTime,
+              eventID: eventInfo.eventID,
+              tradability: { ticket_id: ticket.ticketID, tradable: true },
+              transactionID: txn.transactionID,
+              status: txn.status
+            }));
+          
+          allTicketsWithDetails.push(...enhancedTickets);
+        }
+        
+        // Step 6: Filter out tickets with invalid or missing seat IDs
+        // Less restrictive - just check that seatID exists
+        const validTickets = allTicketsWithDetails.filter(ticket => 
+          ticket.seatID && ticket.seatID.length > 0
+        );
+        
+        // Step 7: Remove duplicate tickets by keeping only one instance of each seatID
         const uniqueTickets = Array.from(
-          userOwnedTickets.reduce((map, ticket) => {
+          validTickets.reduce((map, ticket) => {
             if (!map.has(ticket.seatID)) {
               map.set(ticket.seatID, ticket);
             }
@@ -266,14 +262,44 @@ const TradingPage = () => {
           }, new Map()).values()
         );
         
-        console.log('Unique tickets:', uniqueTickets.length);
+        console.log(`Found ${uniqueTickets.length} unique active tickets for trading`);
+        
+        if (uniqueTickets.length === 0) {
+          // No valid tickets found
+          setUserTickets([]);
+          setDataReady(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Step 8: Set state only after all processing is complete
         setUserTickets(uniqueTickets);
         
-        // If a ticket was passed via location state, pre-select it
+        // Update the transaction groups with correct event details
+        const updatedGroups = uniqueTickets.reduce((acc, ticket) => {
+          const txnId = ticket.transactionID;
+          
+          if (!acc[txnId]) {
+            acc[txnId] = {
+              transactionID: txnId,
+              eventTitle: ticket.eventTitle,
+              eventDate: ticket.eventDate,
+              eventTime: ticket.eventTime,
+              eventID: ticket.eventID,
+              tickets: [],
+              numTickets: 0
+            };
+          }
+          
+          acc[txnId].tickets.push(ticket);
+          acc[txnId].numTickets += 1;
+          
+          return acc;
+        }, {});
+        
+        // Pre-select a ticket if passed via location state
         if (location.state?.ticket) {
           const preSelectedTicket = location.state.ticket;
-          
-          // Find the matching ticket in our fetched data
           const matchedTicket = uniqueTickets.find(t => t.ticketID === preSelectedTicket.ticketID);
           if (matchedTicket) {
             setSelectedTicket(matchedTicket);
@@ -281,12 +307,17 @@ const TradingPage = () => {
             fetchAvailableTicketsForTrade(matchedTicket, matchedTicket.seatID);
           }
         }
+        
+        // Set data ready flag to true only when all data is processed
+        setDataReady(true);
       } catch (error) {
         console.error('Error fetching user tickets:', error);
         setNotification({
           type: 'error',
           message: 'Failed to load your tickets'
         });
+        setUserTickets([]); // Set empty tickets on error
+        setDataReady(true); // Still set to true to show error state
       } finally {
         setIsLoading(false);
       }
@@ -397,15 +428,53 @@ const TradingPage = () => {
   const transactionGroups = Object.values(groupedTransactions);
 
   // Show a loading state while data is being prepared
-  if (isLoading && !userTickets.length) {
+  if (isLoading || !dataReady) {
     return (
       <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
         <div className="w-full max-w-5xl">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-white">Ticket Trading</h1>
           </div>
-          <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col justify-center items-center h-64">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-lg text-gray-300">Loading your tickets...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If there are no tickets, show the empty state - only after data is fully loaded
+  if (userTickets.length === 0) {
+    return (
+      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
+        <div className="w-full max-w-5xl">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-white">Ticket Trading</h1>
+          </div>
+          
+          {/* Trading Rules (Highlighted and Prominent) */}
+          <Card className="p-5 mb-8 bg-gradient-to-r from-blue-500/10 to-blue-600/10 border-2 border-blue-500/30">
+            <h3 className="text-xl text-blue-400 font-semibold mb-2">Trading Rules</h3>
+            <ul className="list-disc list-inside text-gray-300 space-y-1 font-medium">
+              <li>You can only trade tickets from the same event</li>
+              <li>Tickets must be in the same category</li>
+              <li>Both parties must agree to the trade</li>
+              <li>Only tradable tickets can be exchanged</li>
+            </ul>
+          </Card>
+          
+          <div className="bg-[#1a2642] rounded-lg p-8 text-center">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p className="text-gray-300 mb-4">You don't have any tickets available for trading.</p>
+            <Button 
+              onClick={() => navigate('/')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Browse Events
+            </Button>
           </div>
         </div>
       </div>
@@ -465,76 +534,62 @@ const TradingPage = () => {
             Click on one of your tickets below to see available trading options.
           </p>
           
-          {userTickets.length === 0 ? (
-            <div className="bg-[#1a2642] rounded-lg p-8 text-center">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <p className="text-gray-300 mb-4">You don't have any tickets available for trading.</p>
-              <Button 
-                onClick={() => navigate('/')}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Browse Events
-              </Button>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
-                {transactionGroups.map((transaction) => {
-                  const firstTicket = transaction.tickets[0];
-                  const seatDetails = parseSeatDetails(firstTicket.seatID);
-                  const categoryColor = getCategoryColor(seatDetails?.category);
-                  const categoryName = getCategoryName(seatDetails?.category);
-                  
-                  return (
-                    <div key={transaction.transactionID} className="w-full">
-                      <Card 
-                        className="overflow-hidden border-0 h-full bg-[#1a2642] text-white"
-                      >
-                        <div className="relative">
-                          <img 
-                            src={getEventImage(transaction.eventTitle)}
-                            alt={transaction.eventTitle} 
-                            className="w-full h-48 object-cover"
-                          />
-                          <div className="absolute top-3 right-3">
-                            <Badge 
-                              className={`bg-${categoryColor}-600 text-white font-medium px-2 py-1`}
-                            >
-                              {categoryName}
-                            </Badge>
+          <div className="flex justify-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
+              {transactionGroups.map((transaction) => {
+                const firstTicket = transaction.tickets[0];
+                const seatDetails = parseSeatDetails(firstTicket.seatID);
+                const categoryColor = getCategoryColor(seatDetails?.category);
+                const categoryName = getCategoryName(seatDetails?.category);
+                
+                return (
+                  <div key={transaction.transactionID} className="w-full">
+                    <Card 
+                      className="overflow-hidden border-0 h-full bg-[#1a2642] text-white"
+                    >
+                      <div className="relative">
+                        <img 
+                          src={getEventImage(transaction.eventTitle)}
+                          alt={transaction.eventTitle} 
+                          className="w-full h-48 object-cover"
+                        />
+                        <div className="absolute top-3 right-3">
+                          <Badge 
+                            className="text-white font-medium px-2 py-1"
+                            style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
+                          >
+                            {categoryName}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <div className="p-4">
+                        <h3 className="text-lg font-semibold text-white">{transaction.eventTitle}</h3>
+                        <p className="text-gray-300 text-sm mb-2">
+                          {transaction.eventDate} at {transaction.eventTime}
+                        </p>
+                        
+                        <div className="border-t border-blue-900 pt-3 mb-3">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-400 text-sm">Number of Tickets:</span>
+                            <span className="text-white text-sm font-medium">{transaction.numTickets}</span>
                           </div>
                         </div>
                         
-                        <div className="p-4">
-                          <h3 className="text-lg font-semibold text-white">{transaction.eventTitle}</h3>
-                          <p className="text-gray-300 text-sm mb-2">
-                            {transaction.eventDate} at {transaction.eventTime}
-                          </p>
-                          
-                          <div className="border-t border-blue-900 pt-3 mb-3">
-                            <div className="flex justify-between mb-1">
-                              <span className="text-gray-400 text-sm">Number of Tickets:</span>
-                              <span className="text-white text-sm font-medium">{transaction.numTickets}</span>
-                            </div>
-                          </div>
-                          
-                          <Button
-                            className="w-full text-sm bg-blue-700 hover:bg-blue-600 text-white"
-                            variant="default"
-                            onClick={() => handleShowDetails(transaction)}
-                          >
-                            Ticket Details
-                          </Button>
-                        </div>
-                      </Card>
-                    </div>
-                  );
-                })}
-              </div>
+                        <Button
+                          className="w-full text-sm bg-blue-700 hover:bg-blue-600 text-white"
+                          variant="default"
+                          onClick={() => handleShowDetails(transaction)}
+                        >
+                          Ticket Details
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
         
         {/* Available Tickets Section */}
@@ -669,11 +724,16 @@ const TradingPage = () => {
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute top-3 right-3">
-                              <Badge 
-                                className={`bg-${categoryColor}-600 text-white font-medium px-2 py-1`}
-                              >
-                                {categoryName}
-                              </Badge>
+                              {(() => {
+                                return (
+                                  <Badge 
+                                    className="text-white font-medium px-2 py-1"
+                                    style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
+                                  >
+                                    {categoryName}
+                                  </Badge>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -842,11 +902,16 @@ const TradingPage = () => {
                           <div className="flex justify-between items-center">
                             <span className="text-gray-400 text-sm">Category:</span>
                             <span className="text-sm">
-                              <Badge 
-                                className={`bg-${getCategoryColor(seatDetails?.category)}-600 text-white font-medium px-2 py-1`}
-                              >
-                                {getCategoryName(seatDetails?.category)}
-                              </Badge>
+                              {(() => {
+                                return (
+                                  <Badge 
+                                    className="text-white font-medium px-2 py-1"
+                                    style={{ backgroundColor: getCategoryColorHex(getCategoryColor(seatDetails?.category)) }}
+                                  >
+                                    {getCategoryName(seatDetails?.category)}
+                                  </Badge>
+                                );
+                              })()}
                             </span>
                           </div>
                         </div>

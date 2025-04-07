@@ -3,40 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import { useMyTickets } from '../context/myTicketsContext';
 import { useCancel } from '../context/cancelContext';
 import { QRCodeSVG } from 'qrcode.react';
-import { parseSeatDetails } from '../utils/seatUtils';
+import { parseSeatDetails, getCategoryColor, getCategoryName, getCategoryColorHex } from '../utils/seatUtils';
 import { useAuth } from '../context/AuthContext';
 import myTicketService from '../services/myTicketService';
-
-// Map of artist names to their image filenames
-const artistImageMap = {
-  'Benjamin Kheng': 'benkheng.jpg',
-  'Bruno Mars': 'brunomars.jpg',
-  'Carly Rae Jepsen': 'carly.jpg',
-  'Lady Gaga': 'ladygaga.jpg',
-  'Lauv': 'lauv.png',
-  'Taylor Swift': 'taylorswift.webp',
-  'Yoasobi': 'yoasobi.jpg'
-};
-
-// Image mapping function based on artistImageMap
-const getEventImage = (artistName) => {
-  if (!artistName) {
-    console.log('No artist name provided for event image');
-    return '/events/default.jpg';
-  }
-  
-  // Get the image filename for this artist
-  const imageFilename = artistImageMap[artistName];
-  if (!imageFilename) {
-    console.log(`No image found for artist: ${artistName}`);
-    return '/events/default.jpg';
-  }
-  
-  return `/events/${imageFilename}`;
-};
+import { artistImageMap, getEventImage } from '../utils/imageUtils';
 
 const MyTicketsPage = () => {
   const navigate = useNavigate();
@@ -237,6 +211,25 @@ const MyTicketsPage = () => {
                 <span className="bg-red-600 text-white px-4 py-2 rounded-md font-bold uppercase">
                   Cancelled
                 </span>
+              </div>
+            )}
+            {ticket.seatIDs && ticket.seatIDs.length > 0 && (
+              <div className="absolute top-3 right-3">
+                {(() => {
+                  // Use the first seat ID to determine the category
+                  const seatDetails = parseSeatDetails(ticket.seatIDs[0]);
+                  const categoryColor = getCategoryColor(seatDetails?.category);
+                  const categoryName = getCategoryName(seatDetails?.category);
+                  
+                  return (
+                    <Badge 
+                      className="text-white font-medium px-2 py-1"
+                      style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
+                    >
+                      {categoryName}
+                    </Badge>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -452,6 +445,24 @@ const MyTicketsPage = () => {
                                 const seatDetails = parseSeatDetails(ticket.seatID);
                                 return seatDetails?.seat || 'Unknown';
                               })()}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-400 text-sm">Category:</span>
+                              <span className="text-sm">
+                                {(() => {
+                                  const seatDetails = parseSeatDetails(ticket.seatID);
+                                  const categoryColor = getCategoryColor(seatDetails?.category);
+                                  return (
+                                    <Badge 
+                                      className="text-white font-medium px-2 py-1"
+                                      style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
+                                    >
+                                      {getCategoryName(seatDetails?.category)}
+                                    </Badge>
+                                  );
+                                })()}
+                              </span>
                             </div>
                             
                             <div className="flex justify-between items-center">
