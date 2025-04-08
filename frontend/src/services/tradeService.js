@@ -46,17 +46,6 @@ const tradeService = {
             return response.data;
         } catch (error) {
             console.error('Error cancelling trade request:', error);
-            
-            // Fallback to older approach if the main one fails
-            try {
-                console.log('Trying alternative endpoint for cancel');
-                const response = await apiClient.get(`/trade-request/cancel?tradeRequestID=${tradeRequestId}`);
-                console.log('Trade request cancelled (alternative):', response.data);
-                return response.data;
-            } catch (altError) {
-                console.error('Alternative endpoint also failed:', altError);
-                throw altError;
-            }
         }
     },
 
@@ -78,17 +67,6 @@ const tradeService = {
             return response.data;
         } catch (error) {
             console.error('Error accepting trade request:', error);
-            
-            // Fallback to older approach if the main one fails
-            try {
-                console.log('Trying alternative endpoint for accept');
-                const response = await apiClient.get(`/trade-request/accept?tradeRequestID=${tradeRequestId}`);
-                console.log('Trade request accepted (alternative):', response.data);
-                return response.data;
-            } catch (altError) {
-                console.error('Alternative endpoint also failed:', altError);
-                throw altError;
-            }
         }
     },
     

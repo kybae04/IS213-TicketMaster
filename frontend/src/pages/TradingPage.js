@@ -414,11 +414,6 @@ const TradingPage = () => {
     fetchAvailableTicketsForTrade(ticket, ticket.seatID);
   };
 
-  const handleSeatSelect = (seat) => {
-    setSelectedSeat(seat);
-    fetchAvailableTicketsForTrade(selectedTicket, seat);
-  };
-
   const handleTradeClick = (tradeTicket) => {
     setTicketToTrade(tradeTicket);
     setShowTradeModal(true);
@@ -1199,38 +1194,6 @@ const TradingPage = () => {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Transaction group has multiple tickets */}
-                  {userTickets.filter(t => t.transactionID === selectedTicket.transactionID).length > 1 && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-gray-300 mb-2">Select which ticket you want to trade:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {userTickets
-                          .filter(t => t.transactionID === selectedTicket.transactionID)
-                          .map(ticket => {
-                            const seatDetails = parseSeatDetails(ticket.seatID);
-                            return (
-                              <Button 
-                                key={ticket.ticketID}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSeatSelect(ticket.seatID);
-                                }}
-                                className={`px-4 py-2 ${
-                                  selectedSeat === ticket.seatID
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                                }`}
-                              >
-                                {ticket.listed_for_trade ? 
-                                  `Seat ${seatDetails?.seat || 'Unknown'}` : 
-                                  `Seat ${seatDetails?.seat || 'Unknown'}`}
-                              </Button>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  )}
                   
                   {/* Currently Trading Indicator */}
                   <div className="bg-blue-900/20 p-3 rounded-lg mt-4 text-center">
