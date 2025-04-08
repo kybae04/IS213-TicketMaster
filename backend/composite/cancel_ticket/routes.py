@@ -51,7 +51,7 @@ def refund_eligibility(event_id):
         if (isinstance(listed_status, str) and listed_status.lower() == "true") or listed_status is True:
             return jsonify({
                 "message": "Refund not possible — some tickets are involved in a trade.",
-                "refund_eligibility": False
+                "refund_eligibility": False,
                 "isTrading": True
             }), 200
 

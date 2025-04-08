@@ -65,6 +65,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -99,6 +100,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -133,6 +135,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -167,6 +170,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -201,6 +205,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -235,6 +240,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -269,6 +275,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -303,12 +310,31 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
             - Authorization
           credentials: true
 routes:
+  - hosts: ~
+    request_buffering: true
+    response_buffering: true
+    service: 9fd8ddbc-9615-4c71-b72b-d4b015051898
+    headers: ~
+    strip_path: false
+    paths:
+      - ~/trade-request/decline
+    path_handling: v0
+    https_redirect_status_code: 426
+    name: decline-trade-requests
+    ws_id: 89a01719-f7e4-48c2-bbd4-d13e01e02b90
+    methods:
+      - PATCH
+      - OPTIONS
+    protocols:
+      - http
+      - https
   - hosts: ~
     request_buffering: true
     response_buffering: true
