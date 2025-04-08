@@ -266,8 +266,6 @@ def register_routes(app):
                 print(f"Trade endpoint response status: {response.status_code}")
                 print(f"Trade endpoint response body: {response.text}")
                 
-                # Rest of the function remains the same...
-                
                 if response.status_code == 200:
                     # Extract ticket IDs from the original trade request
                     ticket1_id = original_message.get("ticketID")
@@ -286,6 +284,7 @@ def register_routes(app):
                     except Exception as e:
                         print(f"Exception while unlisting tickets: {e}")
                     
+                    # Update trade row to "accepted" in DB
                     try:
                         trade_row = TradeRequest.query.filter_by(tradeRequestID=trade_request_id).first()
                         if trade_row:
@@ -296,6 +295,43 @@ def register_routes(app):
                             print(f"Could not find trade_request {trade_request_id} in DB.")
                     except Exception as e:
                         print(f"Failed to update trade_request status in DB: {str(e)}")
+                    
+                    # Decline all other pending trades involving either ticket
+                    try:
+                        conflicting_trades = TradeRequest.query.filter(
+                            TradeRequest.status == "pending",
+                            (
+                                (TradeRequest.ticketID == ticket1_id) |
+                                (TradeRequest.ticketID == ticket2_id) |
+                                (TradeRequest.requestedTicketID == ticket1_id) |
+                                (TradeRequest.requestedTicketID == ticket2_id)
+                            )
+                        ).all()
+
+                        for trade in conflicting_trades:
+                            if trade.tradeRequestID != trade_request_id:
+                                trade.status = "declined"
+                        db.session.commit()
+                        print(f"Marked {len(conflicting_trades)} trades as declined in DB.")
+                    except Exception as e:
+                        print(f"Error updating declined trades in DB: {str(e)}")
+                    
+                    # Update RabbitMQ messages for those decline trades
+                    try:
+                        for trade in conflicting_trades:
+                            if trade.tradeRequestID != trade_request_id:
+                                find_and_process_trade_request(
+                                    TRADE_QUEUE,
+                                    trade.tradeRequestID,
+                                    {
+                                        "status": "declined",
+                                        "declinedAt": datetime.utcnow().isoformat(),
+                                        "declinedDueTo": trade_request_id
+                                    }
+                                )
+                        print("Updated declined trades in RabbitMQ.")
+                    except Exception as e:
+                        print(f"Error updating RabbitMQ trades to declined: {str(e)}")
 
                     # IMPORTANT: Remove the accepted trade request from the queue
                     # since the trade has been successfully completed
@@ -370,17 +406,17 @@ def register_routes(app):
                     "tradeRequestID": trade_request_id
                 }), 500
             
+            # Update TradeRequest table status to "cancelled"
             try:
-                unlist1 = requests.put(f"{TICKET_SERVICE_URL}/ticket/{ticket1_id}/list-for-trade", json={"listed_for_trade": False})
-                unlist2 = requests.put(f"{TICKET_SERVICE_URL}/ticket/{ticket2_id}/list-for-trade", json={"listed_for_trade": False})
-
-                if unlist1.status_code != 200:
-                    print(f"Warning: Failed to unlist ticket {ticket1_id}")
-                if unlist2.status_code != 200:
-                    print(f"Warning: Failed to unlist ticket {ticket2_id}")
-                    
+                trade_row = TradeRequest.query.filter_by(tradeRequestID=trade_request_id).first()
+                if trade_row:
+                    trade_row.status = "cancelled"
+                    db.session.commit()
+                    print(f"TradeRequest {trade_request_id} status updated in DB.")
+                else:
+                    print(f"Could not find trade_request {trade_request_id} in DB.")
             except Exception as e:
-                print(f"Exception while unlisting tickets: {e}")
+                print(f"Failed to update trade_request status in DB: {str(e)}")
                 
             # Remove all messages with this trade request ID from the queue
             queue_cleaned = remove_message_from_queue(TRADE_QUEUE, trade_request_id)
@@ -396,7 +432,6 @@ def register_routes(app):
                 return jsonify({
                     "message": "Trade request cancelled but failed to clean up queue.",
                     "tradeRequestID": trade_request_id,
-                    "errors": errors
                 }), 207  # 207 Multi-Status
                 
         except Exception as e:
