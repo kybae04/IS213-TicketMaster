@@ -57,21 +57,21 @@ def verify_ticket(ticket_id):
         ### END OF CRITERIA 2 ###
 
 
-        ### CRITERIA 3: If seat is not valid, ticket is not tradable (Logic from Seat Atomic Service) ###
+        # ### CRITERIA 3: If seat is not valid, ticket is not tradable (Logic from Seat Atomic Service) ###
 
-        # Fetch seat validity from Seat Atomic Service
-        seat_response = requests.get(f"{SEAT_SERVICE_URL}/seat/validity/{ticket['seatID']}/{seat['cat_no']}")
+        # # Fetch seat validity from Seat Atomic Service
+        # seat_response = requests.get(f"{SEAT_SERVICE_URL}/seat/validity/{ticket['seatID']}/{seat['cat_no']}")
         
-        if seat_response.status_code != 200:
-            return jsonify({"error": "Seat verification failed", "tradable": False}), 404
+        # if seat_response.status_code != 200:
+        #     return jsonify({"error": "Seat verification failed", "tradable": False}), 404
 
-        seat_data = seat_response.json()
+        # seat_data = seat_response.json()
         
-        # If seat is not valid, ticket is not tradable
-        if not seat_data.get("valid", False):
-            return jsonify({"ticket_id": ticket_id, "tradable": False, "reason": "Seat is not valid for trade"})
+        # # If seat is not valid, ticket is not tradable
+        # if not seat_data.get("valid", False):
+        #     return jsonify({"ticket_id": ticket_id, "tradable": False, "reason": "Seat is not valid for trade"})
         
-        ### END OF CRITERIA 3 ###
+        # ### END OF CRITERIA 3 ###
 
 
         # If all conditions are met, ticket is tradable
