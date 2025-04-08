@@ -82,7 +82,7 @@ const tradeService = {
             console.log('Declining trade request with proper PATCH request');
             const response = await apiClient.patch(`/trade-request/decline`, {
                 tradeRequestID: tradeRequestId,
-                decliningUserID: userId
+                userID: userId
             });
             console.log('Trade request declined:', response.data);
             return response.data;
