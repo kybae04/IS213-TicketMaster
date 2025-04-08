@@ -3,10 +3,10 @@ import React, { useEffect, useRef } from 'react';
 const SimpleSparkles = ({ 
   className, 
   particleColor = '#57A5FF', 
-  particleCount = 120, // Reduced count for better performance
-  minSize = 4,  // Slightly smaller for better performance
-  maxSize = 8,  // Slightly smaller for better performance
-  speed = 1.0,  // Reduced speed for smoother motion
+  particleCount = 100, // Slightly reduced count
+  minSize = 4,
+  maxSize = 8,
+  speed = 0.01,  // Even slower speed
   connectDistance = 180
 }) => {
   const canvasRef = useRef(null);
@@ -15,13 +15,11 @@ const SimpleSparkles = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: false });
+    const ctx = canvas.getContext('2d', { alpha: true });
     let particles = [];
-    let animationSpeed = 1;
     let animationFrameId = null;
-    let hasRenderedFirstFrame = false;
     
-    // Preprocessing color values to avoid string parsing in animation loop
+    // Preprocessing color values
     const baseColor = particleColor;
     const baseR = parseInt(baseColor.slice(1, 3), 16);
     const baseG = parseInt(baseColor.slice(3, 5), 16);
@@ -32,7 +30,7 @@ const SimpleSparkles = ({
     const brightG = Math.min(255, baseG + 80);
     const brightB = Math.min(255, baseB + 80);
     
-    // More smooth resize handling with debouncing
+    // Handle resize with debouncing
     let resizeTimeout;
     const handleResize = () => {
       clearTimeout(resizeTimeout);
@@ -44,7 +42,7 @@ const SimpleSparkles = ({
     // Setup canvas with proper scaling
     const setupCanvas = () => {
       const devicePixelRatio = window.devicePixelRatio || 1;
-      const pixelRatio = Math.min(devicePixelRatio, 1.5); // Cap at 1.5x for performance
+      const pixelRatio = Math.min(devicePixelRatio, 1.5);
       
       // Get display size
       const displayWidth = canvas.clientWidth;
@@ -58,30 +56,27 @@ const SimpleSparkles = ({
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(pixelRatio, pixelRatio);
       
-      // Avoid blurry lines
-      ctx.translate(0.5, 0.5);
-      
       // Enable antialiasing for gradients
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
       
       createParticles();
     };
     
     // Create particles
     const createParticles = () => {
-      particles = []; // Clear existing particles
+      particles = [];
       
-      // Adjust particle count based on canvas size for performance
+      // Adjust particle count based on canvas size
       const area = (canvas.clientWidth * canvas.clientHeight) / 250000;
       const adjustedCount = Math.min(particleCount, Math.max(40, Math.floor(particleCount * Math.min(1, area))));
       
       for (let i = 0; i < adjustedCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speedFactor = (Math.random() * 0.5 + 0.5) * speed;
+        // Extremely slow, consistent speed
+        const speedFactor = (Math.random() * 0.15 + 0.1) * speed;
         
-        // Ensure particles don't start exactly at the borders
-        const margin = maxSize * 1.5;
+        // Ensure particles don't start at the borders
+        const margin = maxSize * 2;
         const xPos = margin + Math.random() * (canvas.clientWidth - margin * 2);
         const yPos = margin + Math.random() * (canvas.clientHeight - margin * 2);
         
@@ -91,158 +86,114 @@ const SimpleSparkles = ({
           size: Math.random() * (maxSize - minSize) + minSize,
           speedX: Math.cos(angle) * speedFactor,
           speedY: Math.sin(angle) * speedFactor,
-          opacity: Math.random() * 0.3 + 0.7,
-          targetOpacity: Math.random() * 0.3 + 0.7, // Target for smooth transitions
-          // Store precomputed color values
+          opacity: 0.7 + Math.random() * 0.2, // More consistent opacity
           r: brightR,
           g: brightG,
           b: brightB,
-          acceleration: Math.random() * 0.008 + 0.002, // Reduced for smoother movement
-          maxSpeed: speedFactor * 1.2, // Slightly reduced max speed
-          // Add properties for optimization
-          connectionCheckFrame: i % 3, // Distribute connection checks across frames
-          // Add jitter timer to help unstick particles
-          jitterTimer: Math.floor(Math.random() * 120)
+          // Very tiny acceleration for extremely gentle movement
+          acceleration: 0.0005,
+          // Simplify to just what we need
+          connectionGroup: i % 3, // For distributing connection checks
+          opacityDirection: Math.random() > 0.5 ? 1 : -1, // For opacity pulsing
+          opacitySpeed: 0.0005 + Math.random() * 0.0005, // Extremely slow opacity changes
+          // Reduce direction changes
+          directionChangeProb: 0.002 // Very rare direction changes
         });
       }
     };
     
-    // Smooth opacity transitions to prevent flickering
-    const updateParticleOpacity = (particle, delta) => {
-      // Update target opacity occasionally
-      if (Math.random() < 0.03) {
-        particle.targetOpacity = Math.random() * 0.3 + 0.7;
-      }
-      
-      // Smoothly transition current opacity to target
-      const diff = particle.targetOpacity - particle.opacity;
-      particle.opacity += diff * 0.03 * (delta / 16);
-    };
-    
-    // Animation loop with consistent timing
+    // Simple animation loop with fixed timestep for consistency
     let lastTime = 0;
-    let frameCount = 0;
+    const fixedDelta = 16; // ~60fps equivalent timestep
     
     const animate = (timestamp) => {
-      if (!hasRenderedFirstFrame) {
-        hasRenderedFirstFrame = true;
-      }
+      // Use fixed delta time for consistent movement across refresh rates
+      const delta = fixedDelta;
       
-      // Calculate delta time (with safety caps)
-      const deltaTime = lastTime ? Math.min(timestamp - lastTime, 33) : 16; // Cap at ~30fps equivalent
-      lastTime = timestamp;
-      
-      const delta = deltaTime * animationSpeed;
-      frameCount++;
-      
-      // Clear with alpha for smoother transitions
+      // Clear canvas
       ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
       
-      // Connection map for optimization
+      // Connection map
       const connectionsToRender = [];
       
-      // Update particle positions first
+      // Update particles
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         
-        // Smooth opacity updates
-        updateParticleOpacity(p, delta);
+        // Very gentle opacity pulsing
+        p.opacity += p.opacityDirection * p.opacitySpeed * delta;
         
-        // Smoother acceleration adjustments
-        if (frameCount % 3 === 0) { // Reduced frequency for smoother movement
-          const acceleration = p.acceleration * delta;
-          p.speedX += (Math.random() - 0.5) * acceleration;
-          p.speedY += (Math.random() - 0.5) * acceleration;
+        // Keep opacity in bounds
+        if (p.opacity > 0.9) {
+          p.opacity = 0.9;
+          p.opacityDirection *= -1;
+        } else if (p.opacity < 0.5) {
+          p.opacity = 0.5;
+          p.opacityDirection *= -1;
+        }
+        
+        // Very rare tiny direction changes
+        if (Math.random() < p.directionChangeProb) {
+          const angle = Math.random() * Math.PI * 2;
+          p.speedX += Math.cos(angle) * p.acceleration * delta;
+          p.speedY += Math.sin(angle) * p.acceleration * delta;
           
-          // Cap the speed
+          // Keep speed very consistent and slow
           const currentSpeed = Math.sqrt(p.speedX * p.speedX + p.speedY * p.speedY);
-          if (currentSpeed > p.maxSpeed) {
-            const ratio = p.maxSpeed / currentSpeed;
+          const baseSpeed = (Math.random() * 0.15 + 0.1) * speed;
+          
+          // If speed deviates too much, adjust it back
+          if (currentSpeed > baseSpeed * 1.5 || currentSpeed < baseSpeed * 0.5) {
+            const ratio = baseSpeed / Math.max(currentSpeed, 0.001);
             p.speedX *= ratio;
             p.speedY *= ratio;
           }
-          
-          // Ensure minimum speed to prevent stalling
-          const minSpeed = 0.1;
-          if (Math.abs(p.speedX) < minSpeed && Math.abs(p.speedY) < minSpeed) {
-            // Give a slight push in a random direction
-            const pushAngle = Math.random() * Math.PI * 2;
-            p.speedX += Math.cos(pushAngle) * minSpeed * 2;
-            p.speedY += Math.sin(pushAngle) * minSpeed * 2;
-          }
         }
         
-        // Update position with delta time scaling
-        p.x += p.speedX * (delta / 16);
-        p.y += p.speedY * (delta / 16);
+        // Update position (very slow movement)
+        p.x += p.speedX * delta;
+        p.y += p.speedY * delta;
         
-        // Boundary padding to avoid getting stuck
-        const padding = p.size * 1.5;
+        // Simple boundary handling
+        const padding = p.size * 2;
         const effectiveWidth = canvas.clientWidth - padding;
         const effectiveHeight = canvas.clientHeight - padding;
         
-        // Bounce off edges with improved unsticking logic
         if (p.x < padding) {
-          p.x = padding + (padding - p.x) * 0.5; // Push away from edge
-          p.speedX = Math.abs(p.speedX) * (1 + Math.random() * 0.2); // Always move right with slight randomness
+          p.x = padding;
+          p.speedX = Math.abs(p.speedX) * 0.7; // Gentler bounce
         } else if (p.x > effectiveWidth) {
-          p.x = effectiveWidth - (p.x - effectiveWidth) * 0.5; // Push away from edge
-          p.speedX = -Math.abs(p.speedX) * (1 + Math.random() * 0.2); // Always move left with slight randomness
+          p.x = effectiveWidth;
+          p.speedX = -Math.abs(p.speedX) * 0.7; // Gentler bounce
         }
         
         if (p.y < padding) {
-          p.y = padding + (padding - p.y) * 0.5; // Push away from edge
-          p.speedY = Math.abs(p.speedY) * (1 + Math.random() * 0.2); // Always move down with slight randomness
+          p.y = padding;
+          p.speedY = Math.abs(p.speedY) * 0.7; // Gentler bounce
         } else if (p.y > effectiveHeight) {
-          p.y = effectiveHeight - (p.y - effectiveHeight) * 0.5; // Push away from edge
-          p.speedY = -Math.abs(p.speedY) * (1 + Math.random() * 0.2); // Always move up with slight randomness
+          p.y = effectiveHeight;
+          p.speedY = -Math.abs(p.speedY) * 0.7; // Gentler bounce
         }
         
-        // Apply jitter to help unstick particles occasionally
-        p.jitterTimer--;
-        if (p.jitterTimer <= 0) {
-          // Reset timer
-          p.jitterTimer = 60 + Math.floor(Math.random() * 120);
+        // Check connections (distributed across particle groups)
+        if (p.connectionGroup === i % 3) {
+          const checkDistance = connectDistance / 2; // Start with shorter distance check
           
-          // Check if near edge
-          const isNearEdge = 
-            p.x < padding * 2 || 
-            p.x > canvas.clientWidth - padding * 2 ||
-            p.y < padding * 2 || 
-            p.y > canvas.clientHeight - padding * 2;
-            
-          if (isNearEdge) {
-            // Apply stronger push toward center
-            const centerX = canvas.clientWidth / 2;
-            const centerY = canvas.clientHeight / 2;
-            const towardCenterX = centerX - p.x;
-            const towardCenterY = centerY - p.y;
-            const length = Math.sqrt(towardCenterX * towardCenterX + towardCenterY * towardCenterY);
-            
-            if (length > 0) {
-              const jitterForce = 0.5 + Math.random() * 0.5;
-              p.speedX += (towardCenterX / length) * jitterForce;
-              p.speedY += (towardCenterY / length) * jitterForce;
-            }
-          }
-        }
-        
-        // Distribute connection checks across frames
-        if (p.connectionCheckFrame === frameCount % 3) {
-          const checkLimit = Math.min(particles.length, i + 20); // Check fewer particles
-          
-          for (let j = i + 1; j < checkLimit; j++) {
+          for (let j = i + 1; j < particles.length; j++) {
             const p2 = particles[j];
             
-            // Quick distance check first (square distance is faster than sqrt)
+            // Quick distance approximation first to avoid expensive sqrt
             const dx = p.x - p2.x;
             const dy = p.y - p2.y;
-            const squareDistance = dx * dx + dy * dy;
+            const approxDistance = Math.abs(dx) + Math.abs(dy); // Manhattan distance is faster
             
-            if (squareDistance < connectDistance * connectDistance) {
-              const distance = Math.sqrt(squareDistance);
+            // If quick check passes, do actual distance calculation
+            if (approxDistance < checkDistance * 1.5) {
+              const squareDistance = dx * dx + dy * dy;
               
-              if (distance < connectDistance) {
+              if (squareDistance < connectDistance * connectDistance) {
+                const distance = Math.sqrt(squareDistance);
+                
                 connectionsToRender.push({
                   x1: p.x,
                   y1: p.y,
@@ -261,75 +212,69 @@ const SimpleSparkles = ({
         }
       }
       
-      // Now render particles (separate from position updates)
-      // First render connections (behind particles)
+      // Render connections
       ctx.globalCompositeOperation = 'source-over';
       
-      // Batch render connections
       for (let i = 0; i < connectionsToRender.length; i++) {
         const conn = connectionsToRender[i];
         
-        ctx.beginPath();
-        
-        // Higher base opacity for connections
-        const connectionOpacity = (1 - conn.distance / connectDistance) * 0.7;
-        
-        // Use gradient
-        const gradient = ctx.createLinearGradient(conn.x1, conn.y1, conn.x2, conn.y2);
-        gradient.addColorStop(0, `rgba(${conn.r}, ${conn.g}, ${conn.b}, ${connectionOpacity * conn.opacity1})`);
-        gradient.addColorStop(0.5, `rgba(255, 255, 255, ${connectionOpacity * 0.6})`);
-        gradient.addColorStop(1, `rgba(${conn.r}, ${conn.g}, ${conn.b}, ${connectionOpacity * conn.opacity2})`);
-        
-        ctx.strokeStyle = gradient;
-        ctx.lineWidth = 1.0; // Slightly thinner for performance
-        ctx.moveTo(conn.x1, conn.y1);
-        ctx.lineTo(conn.x2, conn.y2);
-        ctx.stroke();
+        // Only draw connection if it's not too close (avoids overly bright centers)
+        if (conn.distance > 15) {
+          ctx.beginPath();
+          
+          // More pronounced connections
+          const connectionOpacity = 0.5 * (1 - conn.distance / connectDistance);
+          
+          // Simple gradient
+          const gradient = ctx.createLinearGradient(conn.x1, conn.y1, conn.x2, conn.y2);
+          gradient.addColorStop(0, `rgba(${conn.r}, ${conn.g}, ${conn.b}, ${connectionOpacity * conn.opacity1})`);
+          gradient.addColorStop(1, `rgba(${conn.r}, ${conn.g}, ${conn.b}, ${connectionOpacity * conn.opacity2})`);
+          
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = 1;
+          ctx.moveTo(conn.x1, conn.y1);
+          ctx.lineTo(conn.x2, conn.y2);
+          ctx.stroke();
+        }
       }
       
-      // Then render particles (on top of connections)
+      // Render particles
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         
-        // Define colors outside the loop for reuse
-        const particleFillColor = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.opacity})`;
-        const particleWhiteColor = `rgba(255, 255, 255, ${p.opacity})`;
-        
-        // Use shadow only for larger particles to reduce flicker
-        if ((i % 10 === 0) && p.size > minSize + 1) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = particleFillColor;
+        // Only add glow to a few particles to avoid performance issues
+        if (i % 10 === 0) {
+          ctx.shadowBlur = 5;
+          ctx.shadowColor = `rgba(${p.r}, ${p.g}, ${p.b}, 0.7)`;
         } else {
           ctx.shadowBlur = 0;
         }
         
-        // Draw particle
         ctx.beginPath();
         
-        // Create radial gradient
+        // Brighter radial gradient
         const gradient = ctx.createRadialGradient(
           p.x, p.y, 0,
           p.x, p.y, p.size
         );
-        gradient.addColorStop(0, particleWhiteColor);
-        gradient.addColorStop(0.4, particleFillColor);
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${p.opacity})`);
+        gradient.addColorStop(0.6, `rgba(${p.r}, ${p.g}, ${p.b}, ${p.opacity})`);
         gradient.addColorStop(1, `rgba(${p.r}, ${p.g}, ${p.b}, 0)`);
         
-        ctx.arc(p.x, p.y, p.size * 1.2, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
       }
       
-      ctx.shadowBlur = 0; // Reset shadow
+      ctx.shadowBlur = 0;
       
+      // Request next frame
       animationFrameId = requestAnimationFrame(animate);
     };
     
-    // Initialize
+    // Initialize and start animation
     setupCanvas();
     window.addEventListener('resize', handleResize);
-    
-    // Start animation
     animationFrameId = requestAnimationFrame(animate);
     
     // Cleanup
