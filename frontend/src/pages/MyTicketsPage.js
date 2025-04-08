@@ -75,27 +75,20 @@ const MyTicketsPage = () => {
       const result = await checkRefundEligibility(txn.eventID);
 
       if (result.isTrading) {
-        // If tickets are involved in a trade, show a specific message
+        console.log('Tickets are involved in a trade. Setting modal message and button.');
         setCancelModalMessage(
           'You are unable to cancel this transaction as it contains tickets within a trade.'
         );
         setShowOkButton(true); // Show only the "Ok" button
+        // setShowCancelModal(true)
       } else {
-        // Set the ticket to cancel
+        console.log('Refund eligibility result:', result);
         const ticketData = { ...txn, refundEligible: result.refund_eligibility };
         setTicketToCancel(ticketData);
 
-        // Check refund eligibility and set the appropriate message
-        if (result.refund_eligibility) {
-          setCancelModalMessage(
-            `Message A: Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}? You are eligible for a full refund.`
-          );
-        } else {
-          setCancelModalMessage(
-            `Message B: Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}? This ticket is not eligible for a refund.`
-          );
-        }
-
+        setCancelModalMessage(
+          `Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}?`
+        );
         setShowOkButton(false); // Show "Cancel" and "Confirm" buttons
       }
 
@@ -198,7 +191,7 @@ const MyTicketsPage = () => {
       <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
         <div className="w-full max-w-5xl">
           <h1 className="text-3xl font-bold text-white text-center mb-8">My Tickets</h1>
-          
+
           <div className="bg-[#1a2642] rounded-lg p-8 text-center max-w-md mx-auto border border-blue-900">
             <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -206,7 +199,7 @@ const MyTicketsPage = () => {
             <h3 className="mt-2 text-lg font-medium text-white">No tickets found</h3>
             <p className="mt-1 text-gray-400">Browse events and purchase tickets to see them here.</p>
             <div className="mt-6">
-              <Button 
+              <Button
                 onClick={() => navigate('/')}
                 variant="primary"
                 className="font-bold"
@@ -614,14 +607,13 @@ const MyTicketsPage = () => {
       )}
 
       {/* Cancel Modal */}
-      {showCancelModal && ticketToCancel && (
+      {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1e1e24] rounded-lg shadow-lg p-6 max-w-md w-full border border-blue-900">
-            {/* <h3 className="text-xl font-bold text-white mb-4">Confirm Cancellation</h3> */}
-
-            <p className="text-gray-300 mb-4">
-              {cancelModalMessage}
-            </p>
+            {/* <h3 className="text-xl font-bold text-white mb-4">Cancel Transaction</h3> */}
+            
+            <p className="text-gray-300 mb-4">{cancelModalMessage}</p>
+            
             <div className="flex justify-end gap-4">
               {showOkButton ? (
                 <button
@@ -632,53 +624,21 @@ const MyTicketsPage = () => {
                 </button>
               ) : (
                 <>
-                  <Button
+                  <button
                     onClick={() => setShowCancelModal(false)}
-                    variant="default"
-                    className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
+                    className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
                   >
                     Go Back
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     onClick={confirmCancellation}
-                    variant="default"
-                    className="flex-1 bg-red-600 hover:bg-red-500 text-white"
+                    className="bg-red-600 text-white px-4 py-2 rounded"
                   >
                     Confirm Cancel
-                  </Button>
+                  </button>
                 </>
               )}
             </div>
-            {ticketToCancel.refundEligible ? (
-              <div className="bg-green-900/30 p-3 rounded mb-4">
-                <p className="text-green-400">
-                  You are eligible for a full refund.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-yellow-900/30 p-3 rounded mb-4">
-                <p className="text-yellow-400">
-                  This ticket is not eligible for a refund, but you can still cancel it.
-                </p>
-              </div>
-            )}
-
-            {/* <div className="flex gap-4 mt-6">
-              <Button
-                variant="default"
-                className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
-                onClick={() => setShowCancelModal(false)}
-              >
-                Go Back
-              </Button>
-              <Button
-                variant="default"
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white"
-                onClick={confirmCancellation}
-              >
-                Confirm Cancel
-              </Button>
-            </div> */}
           </div>
         </div>
       )}
