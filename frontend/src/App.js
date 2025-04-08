@@ -18,7 +18,6 @@ import { AuthProvider } from './context/AuthContext';
 import RouteTransition from './components/RouteTransition';
 import { EventProvider } from './context/EventContext';
 import { MyTicketProvider } from './context/myTicketsContext';
-import ApiTester from './components/ApiTester';
 import { CancelProvider } from './context/cancelContext';
 import { BuyTicketProvider } from './context/buyTicketContext';
 
@@ -38,7 +37,6 @@ function App() {
               <CancelProvider>
                 <div className="App">
                   <AppRoutes />
-                  {isDev && <ApiTester />}
                 </div>
               </CancelProvider>
             </MyTicketProvider>
