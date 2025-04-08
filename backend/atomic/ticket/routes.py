@@ -290,7 +290,7 @@ def register_routes(app):
             # Commit the changes in a single transaction
             db.session.commit()
             
-            logger.info(f"Trade completed successfully. Ticket {ticket1_id} now owned by {user2_id}, Ticket {ticket2_id} now owned by {user1_id}")
+            logger.info(f"Trade completed successfully. Seat {ticket1.seatID} now belongs to Ticket {ticket1_id} owned by {user1_id}, Seat {ticket2.seatID} now belongs to Ticket {ticket2_id} owned by {user2_id}")
             
             return jsonify({
                 "message": "Trade completed successfully",
@@ -298,11 +298,11 @@ def register_routes(app):
                 "tickets": [
                     {
                         "ticketID": ticket1_id,
-                        "newUserID": user2_id
+                        "newSeatID": ticket1.seatID
                     },
                     {
                         "ticketID": ticket2_id,
-                        "newUserID": user1_id
+                        "newSeatID": ticket2.seatID
                     }
                 ]
             }), 200
