@@ -1,5 +1,8 @@
 import apiClient from "./api";
 
+// Get current user ID from auth context (imported in components that use this service)
+// We don't import AuthContext here to avoid circular dependencies
+
 const tradeService = {
     // Create a trade request
     createTradeRequest: async (requestData) => {
@@ -25,21 +28,29 @@ const tradeService = {
         }
     },
 
-    // Cancel a trade request - using GET with action parameter
-    cancelTradeRequest: async (tradeRequestId) => {
+    // Cancel a trade request - using PATCH with correct body structure
+    cancelTradeRequest: async (tradeRequestId, userId) => {
+        if (!userId) {
+            console.error('No userId provided for cancelTradeRequest');
+            throw new Error('User ID is required');
+        }
+
         try {
-            // Using GET with query parameters instead of PATCH
-            console.log('Attempting GET request to cancel trade request');
-            const response = await apiClient.get(`/trade-request/cancel?tradeRequestID=${tradeRequestId}`);
+            // Using PATCH with the correct body structure
+            console.log('Cancelling trade request with proper PATCH request');
+            const response = await apiClient.patch(`/trade-request/cancel`, {
+                tradeRequestID: tradeRequestId,
+                userID: userId
+            });
             console.log('Trade request cancelled:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error cancelling trade request:', error);
             
-            // If that fails, try alternative approach with a different endpoint
+            // Fallback to older approach if the main one fails
             try {
                 console.log('Trying alternative endpoint for cancel');
-                const response = await apiClient.get(`/trade-requests/cancel?id=${tradeRequestId}`);
+                const response = await apiClient.get(`/trade-request/cancel?tradeRequestID=${tradeRequestId}`);
                 console.log('Trade request cancelled (alternative):', response.data);
                 return response.data;
             } catch (altError) {
@@ -49,21 +60,29 @@ const tradeService = {
         }
     },
 
-    // Accept a trade request - using GET with action parameter
-    acceptTradeRequest: async (tradeRequestId) => {
+    // Accept a trade request - using PATCH with correct body structure
+    acceptTradeRequest: async (tradeRequestId, userId) => {
+        if (!userId) {
+            console.error('No userId provided for acceptTradeRequest');
+            throw new Error('User ID is required');
+        }
+
         try {
-            // Using GET with query parameters instead of PATCH
-            console.log('Attempting GET request to accept trade request');
-            const response = await apiClient.get(`/trade-request/accept?tradeRequestID=${tradeRequestId}`);
+            // Using PATCH with the correct body structure
+            console.log('Accepting trade request with proper PATCH request');
+            const response = await apiClient.patch(`/trade-request/accept`, {
+                tradeRequestID: tradeRequestId,
+                acceptingUserID: userId
+            });
             console.log('Trade request accepted:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error accepting trade request:', error);
             
-            // If that fails, try alternative approach with a different endpoint
+            // Fallback to older approach if the main one fails
             try {
                 console.log('Trying alternative endpoint for accept');
-                const response = await apiClient.get(`/trade-requests/accept?id=${tradeRequestId}`);
+                const response = await apiClient.get(`/trade-request/accept?tradeRequestID=${tradeRequestId}`);
                 console.log('Trade request accepted (alternative):', response.data);
                 return response.data;
             } catch (altError) {

@@ -15,17 +15,19 @@ import { artistImageMap, getEventImage } from '../utils/imageUtils';
 const MyTicketsPage = () => {
   const navigate = useNavigate();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelModalMessage, setCancelModalMessage] = useState('');
+  const [showOkButton, setShowOkButton] = useState(false)
   const [ticketToCancel, setTicketToCancel] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [notification, setNotification] = useState(null);
-  const { 
-    transactions, 
-    fetchGroupedTickets, 
-    loading, 
-    error, 
+  const {
+    transactions,
+    fetchGroupedTickets,
+    loading,
+    error,
     ticketDetails,
     fetchTicketDetails
   } = useMyTickets();
@@ -45,19 +47,19 @@ const MyTicketsPage = () => {
       if (notificationTimerRef.current) {
         clearTimeout(notificationTimerRef.current);
       }
-      
+
       notificationTimerRef.current = setTimeout(() => {
         setNotification(null);
       }, 3000);
     }
-    
+
     return () => {
       if (notificationTimerRef.current) {
         clearTimeout(notificationTimerRef.current);
       }
     };
   }, [notification]);
-  
+
   // Show notification function
   const showNotification = (message, type = 'default') => {
     setNotification({ message, type });
@@ -69,9 +71,38 @@ const MyTicketsPage = () => {
 
   // call the refund-eligibility function, then if eligible, show the cancel modal
   const handleCancelClick = async (txn) => {
-    const result = await checkRefundEligibility(txn.eventID);
-    setTicketToCancel({ ...txn, refundEligible: result.refund_eligibility });
-    setShowCancelModal(true);
+    try {
+      const result = await checkRefundEligibility(txn.eventID);
+
+      if (result.isTrading) {
+        // If tickets are involved in a trade, show a specific message
+        setCancelModalMessage(
+          'You are unable to cancel this transaction as it contains tickets within a trade.'
+        );
+        setShowOkButton(true); // Show only the "Ok" button
+      } else {
+        // Set the ticket to cancel
+        const ticketData = { ...txn, refundEligible: result.refund_eligibility };
+        setTicketToCancel(ticketData);
+
+        // Check refund eligibility and set the appropriate message
+        if (result.refund_eligibility) {
+          setCancelModalMessage(
+            `Message A: Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}? You are eligible for a full refund.`
+          );
+        } else {
+          setCancelModalMessage(
+            `Message B: Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}? This ticket is not eligible for a refund.`
+          );
+        }
+
+        setShowOkButton(false); // Show "Cancel" and "Confirm" buttons
+      }
+
+      setShowCancelModal(true);
+    } catch (error) {
+      console.error('Error checking refund eligibility:', error);
+    }
   };
 
   const confirmCancellation = async () => {
@@ -101,7 +132,7 @@ const MyTicketsPage = () => {
     setSelectedTransaction(transaction);
     setDetailsLoading(true);
     setShowDetailsModal(true);
-    
+
     try {
       await fetchTicketDetails(transaction.transactionID);
     } catch (error) {
@@ -116,10 +147,10 @@ const MyTicketsPage = () => {
     try {
       // First, close the modal
       setShowDetailsModal(false);
-      
+
       // Clear any existing notification first
       setNotification(null);
-      
+
       // Show notification after a small delay to ensure animation works properly
       setTimeout(() => {
         setNotification({
@@ -127,16 +158,16 @@ const MyTicketsPage = () => {
           message: 'Ticket listed for trade'
         });
       }, 10);
-      
+
       // Then perform the API call (async)
       await myTicketService.toggleTradeStatus(ticket.ticketID, false);
-      
+
       // No need to refresh the page or fetch new data
       // The UI is already updated with the modal closing and notification
-      
+
     } catch (error) {
       console.error('Error listing ticket for trade:', error);
-      
+
       // Show error notification with small delay for animation
       setTimeout(() => {
         setNotification({
@@ -164,30 +195,24 @@ const MyTicketsPage = () => {
 
   if (error) {
     return (
-      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] py-4 px-4">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold text-white text-center mb-6">My Tickets</h1>
-
-          <div className="p-4 bg-red-100 border border-red-400 rounded mb-4">
-            <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Tickets</h3>
-            <p className="text-red-700 mb-4">{error}</p>
-            
-            <div className="bg-white p-4 rounded border border-red-200 mb-4">
-              <h4 className="font-medium mb-2">Possible Solutions:</h4>
-              <ul className="list-disc list-inside">
-                <li>Ensure you are logged in with a valid account</li>
-                <li>Check that your account has tickets associated with it</li>
-                <li>Try logging out and logging back in</li>
-              </ul>
-            </div>
-            
-            <div className="flex justify-center">
-              <button 
-                onClick={fetchGroupedTickets}
-                className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
+      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
+        <div className="w-full max-w-5xl">
+          <h1 className="text-3xl font-bold text-white text-center mb-8">My Tickets</h1>
+          
+          <div className="bg-[#1a2642] rounded-lg p-8 text-center max-w-md mx-auto border border-blue-900">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h3 className="mt-2 text-lg font-medium text-white">No tickets found</h3>
+            <p className="mt-1 text-gray-400">Browse events and purchase tickets to see them here.</p>
+            <div className="mt-6">
+              <Button 
+                onClick={() => navigate('/')}
+                variant="primary"
+                className="font-bold"
               >
-                Try Again
-              </button>
+                Browse Events
+              </Button>
             </div>
           </div>
         </div>
@@ -220,9 +245,9 @@ const MyTicketsPage = () => {
                   const seatDetails = parseSeatDetails(ticket.seatIDs[0]);
                   const categoryColor = getCategoryColor(seatDetails?.category);
                   const categoryName = getCategoryName(seatDetails?.category);
-                  
+
                   return (
-                    <Badge 
+                    <Badge
                       className="text-white font-medium px-2 py-1"
                       style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
                     >
@@ -322,7 +347,7 @@ const MyTicketsPage = () => {
               )}
             </div>
             <div className="flex-1 text-white">{notification.message}</div>
-            <div 
+            <div
               className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 animate-shrink"
               style={{ transformOrigin: 'left' }}
             ></div>
@@ -372,7 +397,7 @@ const MyTicketsPage = () => {
               <h3 className="text-xl font-bold text-white">
                 Ticket Details: {selectedTransaction.eventTitle}
               </h3>
-              <button 
+              <button
                 onClick={() => setShowDetailsModal(false)}
                 className="text-gray-400 hover:text-white"
               >
@@ -381,7 +406,7 @@ const MyTicketsPage = () => {
                 </svg>
               </button>
             </div>
-            
+
             {detailsLoading ? (
               <div className="py-8 text-center">
                 <div className="flex justify-center items-center">
@@ -408,9 +433,9 @@ const MyTicketsPage = () => {
                     <span className="text-white text-sm">{selectedTransaction.transactionID}</span>
                   </div>
                 </div>
-                
+
                 <h4 className="text-lg font-semibold text-white mb-4">Individual Tickets</h4>
-                
+
                 {ticketDetails[selectedTransaction.transactionID]?.loading ? (
                   <div className="text-center py-4">
                     <p className="text-gray-300">Loading tickets...</p>
@@ -419,9 +444,9 @@ const MyTicketsPage = () => {
                   <div className="p-4 bg-red-900/30 rounded-lg">
                     <p className="text-red-400">Error: {ticketDetails[selectedTransaction.transactionID].error}</p>
                   </div>
-                ) : !ticketDetails[selectedTransaction.transactionID] || 
-                   !ticketDetails[selectedTransaction.transactionID].data || 
-                   ticketDetails[selectedTransaction.transactionID].data.length === 0 ? (
+                ) : !ticketDetails[selectedTransaction.transactionID] ||
+                  !ticketDetails[selectedTransaction.transactionID].data ||
+                  ticketDetails[selectedTransaction.transactionID].data.length === 0 ? (
                   <div className="text-center py-4">
                     <p className="text-gray-300">No individual tickets found</p>
                   </div>
@@ -438,7 +463,7 @@ const MyTicketsPage = () => {
                                 return seatDetails?.section || 'Unknown';
                               })()}</span>
                             </div>
-                            
+
                             <div className="flex justify-between">
                               <span className="text-gray-400 text-sm">Seat:</span>
                               <span className="text-white text-sm font-medium">{(() => {
@@ -446,7 +471,7 @@ const MyTicketsPage = () => {
                                 return seatDetails?.seat || 'Unknown';
                               })()}</span>
                             </div>
-                            
+
                             <div className="flex justify-between items-center">
                               <span className="text-gray-400 text-sm">Category:</span>
                               <span className="text-sm">
@@ -454,7 +479,7 @@ const MyTicketsPage = () => {
                                   const seatDetails = parseSeatDetails(ticket.seatID);
                                   const categoryColor = getCategoryColor(seatDetails?.category);
                                   return (
-                                    <Badge 
+                                    <Badge
                                       className="text-white font-medium px-2 py-1"
                                       style={{ backgroundColor: getCategoryColorHex(categoryColor) }}
                                     >
@@ -464,7 +489,7 @@ const MyTicketsPage = () => {
                                 })()}
                               </span>
                             </div>
-                            
+
                             <div className="flex justify-between items-center">
                               <span className="text-gray-400 text-sm">Tradable:</span>
                               {ticket.tradability ? (
@@ -488,7 +513,7 @@ const MyTicketsPage = () => {
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="flex gap-2 mt-4">
                             <Button
                               className="flex-1 text-sm bg-gray-800 hover:bg-gray-700 text-white border border-blue-700"
@@ -500,14 +525,13 @@ const MyTicketsPage = () => {
                             >
                               Show QR Code
                             </Button>
-                            
+
                             {ticket.status !== 'voided' && ticket.tradability?.tradable && (
                               <Button
-                                className={`flex-1 text-sm ${
-                                  ticket.listed_for_trade 
-                                    ? 'bg-green-600 hover:bg-green-600 cursor-default' 
-                                    : 'bg-blue-700 hover:bg-blue-600'
-                                } text-white`}
+                                className={`flex-1 text-sm ${ticket.listed_for_trade
+                                  ? 'bg-green-600 hover:bg-green-600 cursor-default'
+                                  : 'bg-blue-700 hover:bg-blue-600'
+                                  } text-white`}
                                 variant="default"
                                 onClick={() => {
                                   if (!ticket.listed_for_trade) {
@@ -526,10 +550,10 @@ const MyTicketsPage = () => {
                     ))}
                   </div>
                 )}
-                
+
                 <div className="mt-6 flex justify-end">
-                  <Button 
-                    variant="default" 
+                  <Button
+                    variant="default"
                     className="bg-blue-700 hover:bg-blue-600 text-white"
                     onClick={() => setShowDetailsModal(false)}
                   >
@@ -547,13 +571,13 @@ const MyTicketsPage = () => {
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1e1e24] rounded-lg shadow-lg p-6 max-w-md w-full border border-blue-900">
             <h3 className="text-xl font-bold text-white mb-4 text-center">Ticket QR Code</h3>
-            
+
             <div className="p-4 bg-[#12203f] rounded-lg flex flex-col items-center">
               <p className="text-gray-300 mb-4 text-center">
                 {selectedTicket.eventTitle}<br />
                 {selectedTicket.eventDate} at {selectedTicket.eventTime}
               </p>
-              
+
               <div className="bg-white p-4 rounded-lg">
                 <QRCodeSVG
                   value={selectedTicket.ticketID}
@@ -570,15 +594,15 @@ const MyTicketsPage = () => {
                   }}
                 />
               </div>
-              
+
               <p className="mt-4 text-sm text-gray-400 break-all text-center">
                 Ticket ID: {selectedTicket.ticketID}
               </p>
             </div>
-            
+
             <div className="mt-6 flex justify-center">
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 className="bg-blue-700 hover:bg-blue-600 text-white"
                 onClick={() => setShowQRModal(false)}
               >
@@ -593,12 +617,38 @@ const MyTicketsPage = () => {
       {showCancelModal && ticketToCancel && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1e1e24] rounded-lg shadow-lg p-6 max-w-md w-full border border-blue-900">
-            <h3 className="text-xl font-bold text-white mb-4">Confirm Cancellation</h3>
-            
+            {/* <h3 className="text-xl font-bold text-white mb-4">Confirm Cancellation</h3> */}
+
             <p className="text-gray-300 mb-4">
-              Are you sure you want to cancel your {ticketToCancel.numTickets} ticket(s) for {ticketToCancel.eventTitle}?
+              {cancelModalMessage}
             </p>
-            
+            <div className="flex justify-end gap-4">
+              {showOkButton ? (
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded"
+                >
+                  Ok
+                </button>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => setShowCancelModal(false)}
+                    variant="default"
+                    className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
+                  >
+                    Go Back
+                  </Button>
+                  <Button
+                    onClick={confirmCancellation}
+                    variant="default"
+                    className="flex-1 bg-red-600 hover:bg-red-500 text-white"
+                  >
+                    Confirm Cancel
+                  </Button>
+                </>
+              )}
+            </div>
             {ticketToCancel.refundEligible ? (
               <div className="bg-green-900/30 p-3 rounded mb-4">
                 <p className="text-green-400">
@@ -612,23 +662,23 @@ const MyTicketsPage = () => {
                 </p>
               </div>
             )}
-            
-            <div className="flex gap-4 mt-6">
-              <Button 
-                variant="default" 
+
+            {/* <div className="flex gap-4 mt-6">
+              <Button
+                variant="default"
                 className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
                 onClick={() => setShowCancelModal(false)}
               >
                 Go Back
               </Button>
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 className="flex-1 bg-red-600 hover:bg-red-500 text-white"
                 onClick={confirmCancellation}
               >
                 Confirm Cancel
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
       )}
@@ -636,4 +686,4 @@ const MyTicketsPage = () => {
   );
 };
 
-export default MyTicketsPage; 
+export default MyTicketsPage;
