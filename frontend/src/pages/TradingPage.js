@@ -678,8 +678,8 @@ const TradingPage = () => {
     try {
       setIsLoadingRequests(true);
       
-      // Pass the backendUserId to the cancelTradeRequest method
-      await tradeService.cancelTradeRequest(tradeRequestId, backendUserId);
+      // Use the declineTradeRequest method instead of cancelTradeRequest
+      await tradeService.declineTradeRequest(tradeRequestId, backendUserId);
       
       // Close the modal
       setShowDeclineModal(false);
