@@ -818,13 +818,51 @@ const TradingPage = () => {
       <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
         <div className="w-full max-w-5xl">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-white">Ticket Trading</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-white animate-fade-in">
+              Ticket Trading
+              <span className="ml-2 relative inline-block">
+                <span className="text-blue-400 glow-text">Exchange</span>
+              </span>
+            </h1>
           </div>
           <div className="flex flex-col justify-center items-center h-64">
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-lg text-gray-300">Loading your tickets...</p>
           </div>
         </div>
+        
+        <style jsx="true">{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          
+          @keyframes slowPulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+          }
+          
+          .animate-fade-in {
+            animation: fadeIn 1.2s ease-out forwards;
+          }
+          
+          .animate-pulse-slow {
+            animation: slowPulse 3s infinite;
+          }
+          
+          .glow-text {
+            text-shadow: 0 0 10px rgba(96, 165, 250, 0.7),
+                         0 0 20px rgba(96, 165, 250, 0.5),
+                         0 0 30px rgba(96, 165, 250, 0.3);
+          }
+          
+          .glow-text-sm {
+            text-shadow: 0 0 5px rgba(96, 165, 250, 0.7),
+                         0 0 10px rgba(96, 165, 250, 0.5),
+                         0 0 15px rgba(96, 165, 250, 0.3);
+          }
+        `}</style>
       </div>
     );
   }
@@ -835,7 +873,12 @@ const TradingPage = () => {
       <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
         <div className="w-full max-w-5xl">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-white">Ticket Trading</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-white animate-fade-in">
+              Ticket Trading
+              <span className="ml-2 relative inline-block">
+                <span className="text-blue-400 glow-text">Exchange</span>
+              </span>
+            </h1>
           </div>
           
           {/* Trading Rules (Highlighted and Prominent) */}
@@ -860,6 +903,39 @@ const TradingPage = () => {
               Browse Events
             </Button>
           </div>
+          
+          <style jsx="true">{`
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(20px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            
+            @keyframes slowPulse {
+              0% { opacity: 0.8; }
+              50% { opacity: 1; }
+              100% { opacity: 0.8; }
+            }
+            
+            .animate-fade-in {
+              animation: fadeIn 1.2s ease-out forwards;
+            }
+            
+            .animate-pulse-slow {
+              animation: slowPulse 3s infinite;
+            }
+            
+            .glow-text {
+              text-shadow: 0 0 10px rgba(96, 165, 250, 0.7),
+                           0 0 20px rgba(96, 165, 250, 0.5),
+                           0 0 30px rgba(96, 165, 250, 0.3);
+            }
+            
+            .glow-text-sm {
+              text-shadow: 0 0 5px rgba(96, 165, 250, 0.7),
+                           0 0 10px rgba(96, 165, 250, 0.5),
+                           0 0 15px rgba(96, 165, 250, 0.3);
+            }
+          `}</style>
         </div>
       </div>
     );
@@ -897,7 +973,12 @@ const TradingPage = () => {
         )}
 
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-white">Ticket Trading</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-white animate-fade-in">
+            Ticket Trading
+            <span className="ml-2 relative inline-block">
+              <span className="text-blue-400 glow-text">Exchange</span>
+            </span>
+          </h1>
         </div>
       
         {/* Pending Trade Requests Section */}
@@ -1084,7 +1165,10 @@ const TradingPage = () => {
         
         {/* User's Tickets Section */}
         <div className="mb-10">
-          <h2 className="text-2xl font-bold text-white mb-4">Select a Ticket to Trade</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Select a Ticket to Trade
+            <span className="ml-2 text-blue-400 glow-text-sm">Options</span>
+          </h2>
           <p className="mb-6 text-gray-300">
             Click on one of your tickets below to see available trading options.
           </p>
@@ -1152,7 +1236,8 @@ const TradingPage = () => {
           <div ref={availableTicketsRef} className="mt-16 border-t border-gray-700 pt-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">
-                Available Trades for Your Ticket
+                Available Trades
+                <span className="ml-2 text-blue-400 glow-text-sm">For Your Ticket</span>
               </h2>
             </div>
             
@@ -1229,7 +1314,10 @@ const TradingPage = () => {
               </div>
             ) : (
               <div>
-                <h2 className="text-2xl font-bold mb-4 text-white text-center">Available Tickets for Trade</h2>
+                <h2 className="text-2xl font-bold mb-4 text-white text-center">
+                  Available Tickets
+                  <span className="ml-2 text-blue-400 glow-text-sm">For Trade</span>
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
                 {availableTickets.map(ticket => {
                   const seatDetails = parseSeatDetails(ticket.seatID);
@@ -1321,7 +1409,9 @@ const TradingPage = () => {
                 <div className="bg-[#12203f] p-3 rounded-lg">
                   <h4 className="font-medium text-white text-sm mb-2">Trade For:</h4>
                   <p className="text-gray-200 font-medium">{selectedTicket.eventTitle}</p>
-                  <p className="text-gray-300 text-sm">{selectedTicket.eventDate}</p>
+                  <p className="text-gray-300 text-sm">
+                    {selectedTicket.eventDate}
+                  </p>
                   {(() => {
                     const seatDetails = parseSeatDetails(ticketToTrade.seatID);
                     return (

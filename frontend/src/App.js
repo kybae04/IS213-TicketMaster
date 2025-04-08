@@ -6,7 +6,6 @@ import EventDetailsPage from './pages/EventDetailsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MyTicketsPage from './pages/MyTicketsPage';
-import ProfilePage from './pages/ProfilePage';
 import TradingPage from './pages/TradingPage';
 import TradeSuccessPage from './pages/TradeSuccessPage';
 import CancellationSuccessPage from './pages/CancellationSuccessPage';
@@ -19,7 +18,6 @@ import { AuthProvider } from './context/AuthContext';
 import RouteTransition from './components/RouteTransition';
 import { EventProvider } from './context/EventContext';
 import { MyTicketProvider } from './context/myTicketsContext';
-import ApiTester from './components/ApiTester';
 import { CancelProvider } from './context/cancelContext';
 import { BuyTicketProvider } from './context/buyTicketContext';
 
@@ -39,7 +37,6 @@ function App() {
               <CancelProvider>
                 <div className="App">
                   <AppRoutes />
-                  {isDev && <ApiTester />}
                 </div>
               </CancelProvider>
             </MyTicketProvider>
@@ -89,7 +86,6 @@ function AppRoutes() {
         {/* Protected routes using Outlet pattern */}
         <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
           <Route path="/my-tickets" element={withLayout(MyTicketsPage)} />
-          <Route path="/profile" element={withLayout(ProfilePage)} />
           <Route path="/trading" element={withLayout(TradingPage)} />
           <Route path="/trade-success" element={withLayout(TradeSuccessPage)} />
           <Route path="/cancellation-success" element={withLayout(CancellationSuccessPage)} />
