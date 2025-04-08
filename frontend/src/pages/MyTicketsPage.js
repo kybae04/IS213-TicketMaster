@@ -353,8 +353,13 @@ const MyTicketsPage = () => {
         </div>
       )}
 
-      <div className="px-4 mb-8">
-        <h1 className="text-3xl font-bold text-white text-center">My Tickets</h1>
+      <div className="px-4 mb-8 pt-6">
+        <h1 className="text-4xl md:text-5xl font-bold text-white text-center mb-2 animate-fade-in">
+          My Tickets
+          <span className="ml-2 relative inline-block">
+            <span className="text-blue-400 glow-text">Hub</span>
+          </span>
+        </h1>
       </div>
 
       {transactions.length === 0 ? (
@@ -364,7 +369,10 @@ const MyTicketsPage = () => {
           {/* Active Tickets Section */}
           {activeTransactions.length > 0 && (
             <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-6 text-center">Active Tickets</h2>
+              <h2 className="text-2xl font-bold text-white mb-6 text-center">
+                Active Tickets
+                <span className="ml-2 text-blue-400 glow-text-sm">Available</span>
+              </h2>
               <div className="px-4">
                 <div className="flex flex-wrap justify-center gap-6">
                   {activeTransactions.map((ticket, index) => renderTicketCard(ticket, index))}
@@ -376,7 +384,10 @@ const MyTicketsPage = () => {
           {/* Cancelled Tickets Section */}
           {cancelledTransactions.length > 0 && (
             <div>
-              <h2 className="text-2xl font-bold text-white mb-6 text-center">Cancelled Tickets</h2>
+              <h2 className="text-2xl font-bold text-white mb-6 text-center">
+                Cancelled Tickets
+                <span className="ml-2 text-blue-400 glow-text-sm">History</span>
+              </h2>
               <div className="px-4">
                 <div className="flex flex-wrap justify-center gap-6">
                   {cancelledTransactions.map((ticket, index) => renderTicketCard(ticket, index))}
@@ -647,6 +658,39 @@ const MyTicketsPage = () => {
           </div>
         </div>
       )}
+
+      <style jsx="true">{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slowPulse {
+          0% { opacity: 0.8; }
+          50% { opacity: 1; }
+          100% { opacity: 0.8; }
+        }
+        
+        .animate-fade-in {
+          animation: fadeIn 1.2s ease-out forwards;
+        }
+        
+        .animate-pulse-slow {
+          animation: slowPulse 3s infinite;
+        }
+        
+        .glow-text {
+          text-shadow: 0 0 10px rgba(96, 165, 250, 0.7),
+                       0 0 20px rgba(96, 165, 250, 0.5),
+                       0 0 30px rgba(96, 165, 250, 0.3);
+        }
+        
+        .glow-text-sm {
+          text-shadow: 0 0 5px rgba(96, 165, 250, 0.7),
+                       0 0 10px rgba(96, 165, 250, 0.5),
+                       0 0 15px rgba(96, 165, 250, 0.3);
+        }
+      `}</style>
     </div>
   );
 };
