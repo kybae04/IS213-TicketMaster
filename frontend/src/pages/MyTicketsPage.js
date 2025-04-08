@@ -77,7 +77,7 @@ const MyTicketsPage = () => {
       if (result.isTrading) {
         console.log('Tickets are involved in a trade. Setting modal message and button.');
         setCancelModalMessage(
-          'You are unable to cancel this transaction as it contains tickets within a trade.'
+          'You are unable to cancel this transaction as it contains tickets which are up for trade.'
         );
         setShowOkButton(true); // Show only the "Ok" button
         // setShowCancelModal(true)
@@ -625,7 +625,7 @@ const MyTicketsPage = () => {
                   onClick={() => setShowCancelModal(false)}
                   className="bg-blue-500 text-white px-4 py-2 rounded"
                 >
-                  Ok
+                  Okay
                 </button>
               ) : (
                 <>
