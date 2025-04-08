@@ -70,6 +70,28 @@ const tradeService = {
         }
     },
     
+    // Decline a trade request - using PATCH with correct body structure
+    declineTradeRequest: async (tradeRequestId, userId) => {
+        if (!userId) {
+            console.error('No userId provided for declineTradeRequest');
+            throw new Error('User ID is required');
+        }
+
+        try {
+            // Using PATCH with the correct body structure
+            console.log('Declining trade request with proper PATCH request');
+            const response = await apiClient.patch(`/trade-request/decline`, {
+                tradeRequestID: tradeRequestId,
+                decliningUserID: userId
+            });
+            console.log('Trade request declined:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error declining trade request:', error);
+            throw error;
+        }
+    },
+    
     // Get ticket details by ticket ID
     getTicketDetails: async (ticketId) => {
         try {
