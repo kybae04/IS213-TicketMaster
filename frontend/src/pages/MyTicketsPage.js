@@ -176,17 +176,22 @@ const MyTicketsPage = () => {
       setTimeout(() => {
         setNotification({
           type: "success",
-          message: "Ticket listed for trade",
+          message: newStatus 
+            ? "Ticket listed for trade" 
+            : "Ticket removed from trade listing"
         });
       }, 10);
 
       // Then perform the API call (async)
       await myTicketService.toggleTradeStatus(ticket.ticketID, ticket.listed_for_trade);
 
-      // No need to refresh the page or fetch new data
-      // The UI is already updated with the modal closing and notification
+      // Refresh ticket details to reflect the updated status
+      if (selectedTransaction) {
+        await fetchTicketDetails(selectedTransaction.transactionID);
+      }
+
     } catch (error) {
-      console.error("Error listing ticket for trade:", error);
+      console.error("Error updating trade status:", error);
 
       // Show error notification with small delay for animation
       setTimeout(() => {
@@ -720,8 +725,6 @@ const MyTicketsPage = () => {
                             </div>
 
                             <div className="flex gap-2 mt-4">
-<<<<<<< Updated upstream
-=======
                               <Button
                                 className="flex-1 text-sm bg-gray-800 hover:bg-gray-700 text-white border border-blue-700"
                                 variant="default"
@@ -733,41 +736,24 @@ const MyTicketsPage = () => {
                                 Show QR Code
                               </Button>
 
-                            {ticket.status !== 'voided' && ticket.tradability?.tradable && (
->>>>>>> Stashed changes
-                              <Button
-                                className="flex-1 text-sm bg-gray-800 hover:bg-gray-700 text-white border border-blue-700"
-                                variant="default"
-                                onClick={() => {
-                                  setSelectedTicket(ticket);
-                                  setShowQRModal(true);
-                                }}
-                              >
-                                Show QR Code
-                              </Button>
-
-                              {ticket.status !== "voided" &&
-                                ticket.tradability?.tradable && (
-                                  <Button
-                                    className={`flex-1 text-sm ${
-                                      ticket.listed_for_trade
-                                        ? "bg-green-600 hover:bg-green-600 cursor-default"
-                                        : "bg-blue-700 hover:bg-blue-600"
-                                    } text-white`}
-                                    variant="default"
-                                    onClick={() => {
-                                      if (!ticket.listed_for_trade) {
-                                        setShowDetailsModal(false);
-                                        handleListForTrade(ticket);
-                                      }
-                                    }}
-                                    disabled={ticket.listed_for_trade}
-                                  >
-                                    {ticket.listed_for_trade
-                                      ? "Listed for Trade"
-                                      : "List for Trade"}
-                                  </Button>
-                                )}
+                              {ticket.status !== "voided" && ticket.tradability?.tradable && (
+                                <Button
+                                  className={`flex-1 text-sm ${
+                                    ticket.listed_for_trade
+                                      ? "bg-green-600 hover:bg-green-700"
+                                      : "bg-blue-700 hover:bg-blue-600"
+                                  } text-white`}
+                                  variant="default"
+                                  onClick={() => {
+                                    setShowDetailsModal(false);
+                                    handleListForTrade(ticket);
+                                  }}
+                                >
+                                  {ticket.listed_for_trade 
+                                    ? "Unlist from Trade" 
+                                    : "List for Trade"}
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </Card>
