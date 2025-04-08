@@ -6,7 +6,6 @@ import EventDetailsPage from './pages/EventDetailsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MyTicketsPage from './pages/MyTicketsPage';
-import ProfilePage from './pages/ProfilePage';
 import TradingPage from './pages/TradingPage';
 import TradeSuccessPage from './pages/TradeSuccessPage';
 import CancellationSuccessPage from './pages/CancellationSuccessPage';
@@ -89,7 +88,6 @@ function AppRoutes() {
         {/* Protected routes using Outlet pattern */}
         <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
           <Route path="/my-tickets" element={withLayout(MyTicketsPage)} />
-          <Route path="/profile" element={withLayout(ProfilePage)} />
           <Route path="/trading" element={withLayout(TradingPage)} />
           <Route path="/trade-success" element={withLayout(TradeSuccessPage)} />
           <Route path="/cancellation-success" element={withLayout(CancellationSuccessPage)} />
