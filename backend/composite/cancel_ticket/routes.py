@@ -52,6 +52,7 @@ def refund_eligibility(event_id):
             return jsonify({
                 "message": "Refund not possible — some tickets are involved in a trade.",
                 "refund_eligibility": False
+                "isTrading": True
             }), 200
 
     # Step 2: Get event date
