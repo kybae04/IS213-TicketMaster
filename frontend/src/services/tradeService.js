@@ -46,17 +46,6 @@ const tradeService = {
             return response.data;
         } catch (error) {
             console.error('Error cancelling trade request:', error);
-            
-            // Fallback to older approach if the main one fails
-            try {
-                console.log('Trying alternative endpoint for cancel');
-                const response = await apiClient.get(`/trade-request/cancel?tradeRequestID=${tradeRequestId}`);
-                console.log('Trade request cancelled (alternative):', response.data);
-                return response.data;
-            } catch (altError) {
-                console.error('Alternative endpoint also failed:', altError);
-                throw altError;
-            }
         }
     },
 
@@ -78,17 +67,28 @@ const tradeService = {
             return response.data;
         } catch (error) {
             console.error('Error accepting trade request:', error);
-            
-            // Fallback to older approach if the main one fails
-            try {
-                console.log('Trying alternative endpoint for accept');
-                const response = await apiClient.get(`/trade-request/accept?tradeRequestID=${tradeRequestId}`);
-                console.log('Trade request accepted (alternative):', response.data);
-                return response.data;
-            } catch (altError) {
-                console.error('Alternative endpoint also failed:', altError);
-                throw altError;
-            }
+        }
+    },
+    
+    // Decline a trade request - using PATCH with correct body structure
+    declineTradeRequest: async (tradeRequestId, userId) => {
+        if (!userId) {
+            console.error('No userId provided for declineTradeRequest');
+            throw new Error('User ID is required');
+        }
+
+        try {
+            // Using PATCH with the correct body structure
+            console.log('Declining trade request with proper PATCH request');
+            const response = await apiClient.patch(`/trade-request/decline`, {
+                tradeRequestID: tradeRequestId,
+                decliningUserID: userId
+            });
+            console.log('Trade request declined:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error declining trade request:', error);
+            throw error;
         }
     },
     
