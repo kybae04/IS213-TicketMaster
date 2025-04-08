@@ -53,7 +53,7 @@ function App() {
 // Separate component for routes to access auth context
 function AppRoutes() {
   // Import useAuth here inside the Router context
-  const { isAuthenticated } = require('./context/AuthContext').useAuth();
+  const { isAuthenticated, loading } = require('./context/AuthContext').useAuth();
 
   // Wrapper function to apply PageLayout to all routes
   const withLayout = (Component) => (
@@ -61,6 +61,18 @@ function AppRoutes() {
       <Component />
     </PageLayout>
   );
+
+  // If auth is still loading, show a simple loading indicator
+  if (loading && localStorage.getItem('authCheckInProgress') === 'true') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-t-2 border-blue-500 border-r-2 rounded-full mx-auto mb-2"></div>
+          <p className="text-gray-500">Loading authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <RouteTransition>

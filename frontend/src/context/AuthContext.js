@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [backendUserId, setBackendUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   // Function to fetch and set the backend user ID
   const fetchBackendUserId = async (userData) => {
@@ -37,6 +38,9 @@ export function AuthProvider({ children }) {
 
   // Initialize authentication state
   useEffect(() => {
+    // Set a localStorage flag to indicate auth check is in progress
+    localStorage.setItem('authCheckInProgress', 'true');
+    
     async function init() {
       try {
         const session = await getCurrentSession();
@@ -49,8 +53,12 @@ export function AuthProvider({ children }) {
         }
       } catch (error) {
         // Silent failure
+        console.error("Auth initialization error:", error);
       } finally {
         setLoading(false);
+        setInitialized(true);
+        // Remove the auth check flag when complete
+        localStorage.removeItem('authCheckInProgress');
       }
       
       // Listen for auth changes with Supabase
@@ -197,6 +205,7 @@ export function AuthProvider({ children }) {
     user,
     backendUserId,
     loading,
+    initialized,
     login,
     logout,
     isAuthenticated: !!user,
