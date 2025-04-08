@@ -282,9 +282,10 @@ def register_routes(app):
                     "error": f"Cannot trade ticket with status: {invalid_ticket.status}. Both tickets must be confirmed."
                 }), 400
             
-            # Swap ownership
-            ticket1.userID = user2_id
-            ticket2.userID = user1_id
+            # Swap ticketIDs and seatIDs between the two owners
+            temp_seatID = ticket1.seatID
+            ticket1.seatID = ticket2.seatID
+            ticket2.seatID = temp_seatID
             
             # Commit the changes in a single transaction
             db.session.commit()
