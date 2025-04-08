@@ -452,7 +452,59 @@ def register_routes(app):
         except Exception as e:
             print(f"Unexpected error in cancel_trade_request: {str(e)}")
             traceback.print_exc()
-            return jsonify({"error": f"Server error: {str(e)}"}), 500
+            return jsonify({"error": f"Server error: {str(e)}"}), 
+            500
+    
+    # Function to allow requestedUser to decline/reject users
+    @app.route('/trade-request/decline', methods=['PATCH'])
+    def decline_trade_request():
+        try:
+            data = request.json
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+
+            trade_request_id = data.get("tradeRequestID")
+            declining_user_id = data.get("userID")
+
+            if not trade_request_id or not declining_user_id:
+                return jsonify({"error": "Missing required fields: tradeRequestID or userID"}), 400
+
+            # Fetch trade request from DB
+            trade_row = TradeRequest.query.filter_by(tradeRequestID=trade_request_id).first()
+            if not trade_row:
+                return jsonify({"error": "Trade request not found"}), 404
+
+            # Check if the declining user is the requestedUserID
+            if trade_row.requestedUserID != declining_user_id:
+                return jsonify({"error": "Only the requested user can decline this trade"}), 403
+
+            # Update DB
+            trade_row.status = "declined"
+            db.session.commit()
+            print(f"TradeRequest {trade_request_id} declined by {declining_user_id} in DB.")
+
+            # Update message in RabbitMQ
+            updated_status = {
+                "status": "declined"
+            }
+            _, success = find_and_process_trade_request(
+                TRADE_QUEUE, trade_request_id, updated_status
+            )
+
+            if success:
+                print(f"TradeRequest {trade_request_id} updated to declined in queue.")
+            else:
+                print(f"TradeRequest {trade_request_id} could not be updated in queue.")
+
+            return jsonify({
+                "message": "Trade request declined successfully.",
+                "tradeRequestID": trade_request_id
+            }), 200
+
+        except Exception as e:
+            print(f"Error in decline_trade_request: {str(e)}")
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
         
     @app.route('/trade-status/<ticket_id>', methods=['GET'])
     def get_ticket_trade_status(ticket_id):
