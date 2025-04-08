@@ -1,7 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
 
 db = SQLAlchemy()
+
+def get_singapore_time():
+    return datetime.utcnow + timedelta(hours=8)
 
 # TradeRequest Model
 class TradeRequest(db.Model):
@@ -15,7 +18,7 @@ class TradeRequest(db.Model):
     ticketID = db.Column("ticketid", db.String(36), nullable=False)
     requestedTicketID = db.Column("requestedticketid", db.String(36), nullable=False)
     status = db.Column("status", db.String(20), nullable=False, default="pending")
-    created_at = db.Column("created_at", db.DateTime, default=datetime.utcnow)
+    created_at = db.Column("created_at", db.DateTime, default=get_singapore_time)
 
     def to_dict(self):
         return {
