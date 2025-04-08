@@ -108,10 +108,10 @@ const MyTicketsPage = () => {
   const confirmCancellation = async () => {
     try {
       const response = await cancelTicket(ticketToCancel.transactionID, ticketToCancel.refundEligible);
-
+      console.log(response)
       setTicketToCancel((prev) => ({
         ...prev,
-        price: response.amount_refunded
+        price: parseInt(response.amount_refunded)
       }));
 
       await fetchGroupedTickets();
@@ -119,7 +119,12 @@ const MyTicketsPage = () => {
 
       // Navigate to success page
       navigate('/cancellation-success', {
-        state: { ticket: ticketToCancel }
+        state: { 
+          ticket: { 
+            ...ticketToCancel,
+            price: parseInt(response.amount_refunded)
+          } 
+        }
       });
     } catch (error) {
       console.error('Error cancelling ticket:', error);
