@@ -25,35 +25,51 @@ const tradeService = {
         }
     },
 
-    // Cancel a trade request using PATCH
-    cancelTradeRequest: async (tradeRequestId, userId) => {
+    // Cancel a trade request - using GET with action parameter
+    cancelTradeRequest: async (tradeRequestId) => {
         try {
-            console.log('Sending PATCH request to cancel trade request');
-            const response = await apiClient.patch('/trade-request/cancel', {
-                tradeRequestID: tradeRequestId,
-                userID: userId
-            });
+            // Using GET with query parameters instead of PATCH
+            console.log('Attempting GET request to cancel trade request');
+            const response = await apiClient.get(`/trade-request/cancel?tradeRequestID=${tradeRequestId}`);
             console.log('Trade request cancelled:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error cancelling trade request:', error);
-            throw error;
+            
+            // If that fails, try alternative approach with a different endpoint
+            try {
+                console.log('Trying alternative endpoint for cancel');
+                const response = await apiClient.get(`/trade-requests/cancel?id=${tradeRequestId}`);
+                console.log('Trade request cancelled (alternative):', response.data);
+                return response.data;
+            } catch (altError) {
+                console.error('Alternative endpoint also failed:', altError);
+                throw altError;
+            }
         }
     },
 
-    // Accept a trade request using PATCH
-    acceptTradeRequest: async (tradeRequestId, acceptingUserId) => {
+    // Accept a trade request - using GET with action parameter
+    acceptTradeRequest: async (tradeRequestId) => {
         try {
-            console.log('Sending PATCH request to accept trade request');
-            const response = await apiClient.patch('/trade-request/accept', {
-                tradeRequestID: tradeRequestId,
-                acceptingUserID: acceptingUserId
-            });
+            // Using GET with query parameters instead of PATCH
+            console.log('Attempting GET request to accept trade request');
+            const response = await apiClient.get(`/trade-request/accept?tradeRequestID=${tradeRequestId}`);
             console.log('Trade request accepted:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error accepting trade request:', error);
-            throw error;
+            
+            // If that fails, try alternative approach with a different endpoint
+            try {
+                console.log('Trying alternative endpoint for accept');
+                const response = await apiClient.get(`/trade-requests/accept?id=${tradeRequestId}`);
+                console.log('Trade request accepted (alternative):', response.data);
+                return response.data;
+            } catch (altError) {
+                console.error('Alternative endpoint also failed:', altError);
+                throw altError;
+            }
         }
     },
     
