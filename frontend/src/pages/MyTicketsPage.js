@@ -77,21 +77,24 @@ const MyTicketsPage = () => {
       if (result.isTrading) {
         console.log('Tickets are involved in a trade. Setting modal message and button.');
         setCancelModalMessage(
-          'You are unable to cancel this transaction as it contains tickets which are up for trade.'
+          'You are unable to cancel this transaction as it contains tickets within a trade.'
         );
         setShowOkButton(true); // Show only the "Ok" button
-        // setShowCancelModal(true)
       } else {
         console.log('Refund eligibility result:', result);
         const ticketData = { ...txn, refundEligible: result.refund_eligibility };
         setTicketToCancel(ticketData);
 
+        // Set the cancel modal message based on refund eligibility
+        const refundMessage = result.refund_eligibility
+          ? 'You are eligible to receive a full refund.'
+          : 'You will not be able to receive a full refund but you may still proceed to cancel.';
+
         setCancelModalMessage(
-          `Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}?`
+          `Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}? ${refundMessage}`
         );
         setShowOkButton(false); // Show "Cancel" and "Confirm" buttons
       }
-
       setShowCancelModal(true);
     } catch (error) {
       console.error('Error checking refund eligibility:', error);
