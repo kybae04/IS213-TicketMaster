@@ -5,6 +5,10 @@ import { Card } from '../components/ui/card';
 import { useAuth } from '../context/AuthContext';
 import { useBuyTicket } from '../context/buyTicketContext';
 
+// Session timeout keys
+const SESSION_TIMEOUT_KEY = 'checkout_session_timeout';
+const SESSION_EVENT_ID_KEY = 'checkout_event_id';
+
 const CheckoutPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,8 +30,24 @@ const CheckoutPage = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [timeLeft, setTimeLeft] = useState(5 * 60); // 5 minutes in seconds
-  const [timerExpired, setTimerExpired] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
+  const [timeoutModalMessage, setTimeoutModalMessage] = useState('');
+  const [timeoutErrorOccurred, setTimeoutErrorOccurred] = useState(false);
+  const [eventId, setEventId] = useState(null);
+
+  // Check for session timeout on page load/refresh
+  useEffect(() => {
+    const hasTimedOut = localStorage.getItem(SESSION_TIMEOUT_KEY) === 'true';
+    if (hasTimedOut) {
+      // Clear the timeout flag
+      localStorage.removeItem(SESSION_TIMEOUT_KEY);
+      localStorage.removeItem(SESSION_EVENT_ID_KEY);
+      // Redirect to home page
+      navigate('/');
+      return;
+    }
+  }, [navigate]);
 
   // Format time remaining as mm:ss
   const formatTimeLeft = () => {
@@ -39,20 +59,31 @@ const CheckoutPage = () => {
   // Timer effect
   useEffect(() => {
     if (timeLeft <= 0) {
-      setTimerExpired(true);
-      // Navigate back to the event page when timer expires
+      // When timer expires, process timeout and show modal
       if (orderData) {
         console.log('Timer expired. calling timeout function...')
         timeout(orderData.eventId, orderData.category)
           .then(() => {
-            alert("Your checkout session has expired. You will be redirected back to the event page.");
-            navigate(`/event/${orderData.eventId}`);
+            // Set session timeout in localStorage
+            localStorage.setItem(SESSION_TIMEOUT_KEY, 'true');
+            localStorage.setItem(SESSION_EVENT_ID_KEY, orderData.eventId);
+            
+            setTimeoutModalMessage("Your checkout session has expired. You can return to the event page or go back to the home page.");
+            setTimeoutErrorOccurred(false);
+            setEventId(orderData.eventId);
+            setShowTimeoutModal(true);
           })
           .catch((error) => {
             console.error('Error during timeout:', error);
-            alert("An error occurred. Redirecting to the event page.");
-            navigate(`/event/${orderData.eventId}`);
-          })
+            // Set session timeout in localStorage even on error
+            localStorage.setItem(SESSION_TIMEOUT_KEY, 'true');
+            localStorage.setItem(SESSION_EVENT_ID_KEY, orderData.eventId);
+            
+            setTimeoutModalMessage("An error occurred while processing your timeout. You can return to the event page or go back to the home page.");
+            setTimeoutErrorOccurred(true);
+            setEventId(orderData.eventId);
+            setShowTimeoutModal(true);
+          });
       } else {
         navigate('/');
       }
@@ -65,6 +96,26 @@ const CheckoutPage = () => {
 
     return () => clearInterval(timer);
   }, [timeLeft, navigate, orderData, timeout]);
+
+  // Navigate to event page
+  const handleEventRedirect = () => {
+    // Clear the timeout session data
+    localStorage.removeItem(SESSION_TIMEOUT_KEY);
+    localStorage.removeItem(SESSION_EVENT_ID_KEY);
+    
+    setShowTimeoutModal(false);
+    navigate(`/event/${eventId}`);
+  };
+
+  // Navigate to home page
+  const handleHomeRedirect = () => {
+    // Clear the timeout session data
+    localStorage.removeItem(SESSION_TIMEOUT_KEY);
+    localStorage.removeItem(SESSION_EVENT_ID_KEY);
+    
+    setShowTimeoutModal(false);
+    navigate('/');
+  };
 
   useEffect(() => {
     // Get order data from navigation state
@@ -89,8 +140,19 @@ const CheckoutPage = () => {
 
       setOrderData(enhancedOrderData);
     } else {
-      // If no order data, navigate back to home
-      navigate('/');
+      // Check if we have a timed out session
+      const hasTimedOut = localStorage.getItem(SESSION_TIMEOUT_KEY) === 'true';
+      const storedEventId = localStorage.getItem(SESSION_EVENT_ID_KEY);
+      
+      if (hasTimedOut && storedEventId) {
+        // Show timeout modal with stored event ID
+        setEventId(storedEventId);
+        setTimeoutModalMessage("Your checkout session has expired. You can return to the event page or go back to the home page.");
+        setShowTimeoutModal(true);
+      } else {
+        // If no order data and no timeout, navigate back to home
+        navigate('/');
+      }
     }
 
     // If user is authenticated, pre-fill user details
@@ -128,9 +190,11 @@ const CheckoutPage = () => {
     * };
     */
 
-    // Reset the timer when the page loads
-    setTimeLeft(5 * 60);
-    setTimerExpired(false);
+    // Reset the timer when the page loads (only if we have valid order data and no timeout)
+    if (location.state?.orderData && localStorage.getItem(SESSION_TIMEOUT_KEY) !== 'true') {
+      setTimeLeft(300);
+      setShowTimeoutModal(false);
+    }
 
   }, [location, navigate, isAuthenticated, user]);
 
@@ -210,7 +274,7 @@ const CheckoutPage = () => {
     }
   };
 
-  if (!orderData || timerExpired) {
+  if (!orderData && !showTimeoutModal) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -223,18 +287,20 @@ const CheckoutPage = () => {
       <h1 className="text-3xl font-bold text-center mb-4 text-gray-900 dark:text-white mt-4">Checkout</h1>
 
       {/* Checkout Timer */}
-      <div className="max-w-lg mx-auto mb-6">
-        <div className={`flex items-center justify-center p-3 rounded-lg ${timeLeft <= 60 ? 'bg-red-600/20' : 'bg-blue-600/20'}`}>
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <span className={`font-bold ${timeLeft <= 60 ? 'text-red-500' : 'text-blue-400'}`}>
-            Time remaining: {formatTimeLeft()}
-          </span>
+      {!showTimeoutModal && (
+        <div className="max-w-lg mx-auto mb-6">
+          <div className={`flex items-center justify-center p-3 rounded-lg ${timeLeft <= 60 ? 'bg-red-600/20' : 'bg-blue-600/20'}`}>
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span className={`font-bold ${timeLeft <= 60 ? 'text-red-500' : 'text-blue-400'}`}>
+              Time remaining: {formatTimeLeft()}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {!isAuthenticated && (
+      {!isAuthenticated && !showTimeoutModal && (
         <div className="mb-8 bg-gray-800 p-4 rounded-lg text-center">
           <p className="text-white mb-3">Sign in to auto-fill your information and access your saved payment methods.</p>
           <Link
@@ -247,344 +313,382 @@ const CheckoutPage = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Order Summary */}
-        <div className="lg:col-span-1">
-          <Card className="p-6 bg-gray-800 border border-blue-500 mb-6 sticky top-8">
-            <h2 className="text-xl font-semibold text-blue-400 mb-4">Order Summary</h2>
+      {!showTimeoutModal && orderData && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Order Summary */}
+          <div className="lg:col-span-1">
+            <Card className="p-6 bg-gray-800 border border-blue-500 mb-6 sticky top-8">
+              <h2 className="text-xl font-semibold text-blue-400 mb-4">Order Summary</h2>
 
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-white mb-2">{orderData.eventTitle}</h3>
-              <p className="text-gray-300 mb-1">{orderData.eventDate} at {orderData.eventTime}</p>
-              <p className="text-gray-300 mb-3">{orderData.location}</p>
-            </div>
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-white mb-2">{orderData.eventTitle}</h3>
+                <p className="text-gray-300 mb-1">{orderData.eventDate} at {orderData.eventTime}</p>
+                <p className="text-gray-300 mb-3">{orderData.location}</p>
+              </div>
 
-            <div className="border-t border-blue-500/30 my-3"></div>
+              <div className="border-t border-blue-500/30 my-3"></div>
 
-            <div className="flex justify-between mb-1">
-              <span className="text-gray-300">Category:</span>
-              <span className="text-white font-medium">{orderData.category}</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span className="text-gray-300">Seats:</span>
-              <span className="text-white font-medium">{orderData.seatCount}</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span className="text-gray-300">Price per ticket:</span>
-              <span className="text-white font-medium">${orderData.pricePerTicket.toFixed(2)}</span>
-            </div>
-            <div className="border-t border-blue-500/30 my-3"></div>
-            <div className="flex justify-between mb-1">
-              <span className="text-gray-300">Subtotal:</span>
-              <span className="text-white font-medium">${orderData.subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span className="text-gray-300">Service Fee:</span>
-              <span className="text-white font-medium">${orderData.serviceFee.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between mb-4">
-              <span className="text-blue-400 font-bold">Total:</span>
-              <span className="text-blue-400 font-bold">${orderData.total.toFixed(2)}</span>
-            </div>
-          </Card>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-300">Category:</span>
+                <span className="text-white font-medium">{orderData.category}</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-300">Seats:</span>
+                <span className="text-white font-medium">{orderData.seatCount}</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-300">Price per ticket:</span>
+                <span className="text-white font-medium">${orderData.pricePerTicket.toFixed(2)}</span>
+              </div>
+              <div className="border-t border-blue-500/30 my-3"></div>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-300">Subtotal:</span>
+                <span className="text-white font-medium">${orderData.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-300">Service Fee:</span>
+                <span className="text-white font-medium">${orderData.serviceFee.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between mb-4">
+                <span className="text-blue-400 font-bold">Total:</span>
+                <span className="text-blue-400 font-bold">${orderData.total.toFixed(2)}</span>
+              </div>
+            </Card>
+          </div>
+
+          {/* Payment Form */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit}>
+              <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                  Customer Information
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label
+                      htmlFor="firstName"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="firstName"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.firstName && (
+                      <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="lastName"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="lastName"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.lastName && (
+                      <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.email && (
+                      <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="phoneNumber"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      placeholder="(123) 456-7890"
+                      value={formData.phoneNumber}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.phoneNumber && (
+                      <p className="text-red-500 text-xs mt-1">{errors.phoneNumber}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                  Payment Information
+                </h2>
+
+                <div className="mb-4">
+                  <label
+                    htmlFor="cardNumber"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
+                    Card Number *
+                  </label>
+                  <input
+                    type="text"
+                    id="cardNumber"
+                    name="cardNumber"
+                    placeholder="1234 5678 9012 3456"
+                    value={formData.cardNumber}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.cardNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                  />
+                  {errors.cardNumber && (
+                    <p className="text-red-500 text-xs mt-1">{errors.cardNumber}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label
+                      htmlFor="expiryDate"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Expiry Date (MM/YY) *
+                    </label>
+                    <input
+                      type="text"
+                      id="expiryDate"
+                      name="expiryDate"
+                      placeholder="MM/YY"
+                      value={formData.expiryDate}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.expiryDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.expiryDate && (
+                      <p className="text-red-500 text-xs mt-1">{errors.expiryDate}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="cvv"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      CVV *
+                    </label>
+                    <input
+                      type="text"
+                      id="cvv"
+                      name="cvv"
+                      placeholder="123"
+                      value={formData.cvv}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.cvv ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.cvv && (
+                      <p className="text-red-500 text-xs mt-1">{errors.cvv}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                  Billing Address
+                </h2>
+
+                <div className="mb-4">
+                  <label
+                    htmlFor="billingAddress"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
+                    Address *
+                  </label>
+                  <input
+                    type="text"
+                    id="billingAddress"
+                    name="billingAddress"
+                    value={formData.billingAddress}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-2 rounded-md border ${errors.billingAddress ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                  />
+                  {errors.billingAddress && (
+                    <p className="text-red-500 text-xs mt-1">{errors.billingAddress}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label
+                      htmlFor="city"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      id="city"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.city ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.city && (
+                      <p className="text-red-500 text-xs mt-1">{errors.city}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="postalCode"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Postal Code *
+                    </label>
+                    <input
+                      type="text"
+                      id="postalCode"
+                      name="postalCode"
+                      value={formData.postalCode}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 rounded-md border ${errors.postalCode ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                    />
+                    {errors.postalCode && (
+                      <p className="text-red-500 text-xs mt-1">{errors.postalCode}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="country"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Country *
+                    </label>
+                    <select
+                      id="country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="Singapore">Singapore</option>
+                      <option value="United States">United States</option>
+                      <option value="Canada">Canada</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Australia">Australia</option>
+                      <option value="Germany">Germany</option>
+                      <option value="France">France</option>
+                      <option value="Japan">Japan</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </Card>
+
+              {errors.form && (
+                <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                  {errors.form}
+                </div>
+              )}
+
+              <div className="flex justify-end mb-8">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="py-3 px-8 text-lg font-bold"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : (
+                    `Pay $${orderData.total.toFixed(2)}`
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
+      )}
 
-        {/* Payment Form */}
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit}>
-            <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Customer Information
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label
-                    htmlFor="firstName"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    First Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.firstName && (
-                    <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="lastName"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Last Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.lastName && (
-                    <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.email && (
-                    <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="phoneNumber"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    placeholder="(123) 456-7890"
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.phoneNumber && (
-                    <p className="text-red-500 text-xs mt-1">{errors.phoneNumber}</p>
-                  )}
-                </div>
+      {/* Timeout Modal */}
+      {showTimeoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1e1e24] rounded-lg shadow-lg p-6 max-w-md w-full border border-blue-900">
+            <h3 className="text-xl font-bold text-white mb-4">Session Expired</h3>
+            
+            <div className="bg-[#12203f] p-4 rounded-lg mb-6">
+              <div className="flex items-start">
+                <svg className="w-6 h-6 text-red-400 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p className="text-white">
+                  {timeoutModalMessage}
+                </p>
               </div>
-            </Card>
-
-            <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Payment Information
-              </h2>
-
-              <div className="mb-4">
-                <label
-                  htmlFor="cardNumber"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
-                  Card Number *
-                </label>
-                <input
-                  type="text"
-                  id="cardNumber"
-                  name="cardNumber"
-                  placeholder="1234 5678 9012 3456"
-                  value={formData.cardNumber}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-2 rounded-md border ${errors.cardNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                />
-                {errors.cardNumber && (
-                  <p className="text-red-500 text-xs mt-1">{errors.cardNumber}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label
-                    htmlFor="expiryDate"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Expiry Date (MM/YY) *
-                  </label>
-                  <input
-                    type="text"
-                    id="expiryDate"
-                    name="expiryDate"
-                    placeholder="MM/YY"
-                    value={formData.expiryDate}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.expiryDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.expiryDate && (
-                    <p className="text-red-500 text-xs mt-1">{errors.expiryDate}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="cvv"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    CVV *
-                  </label>
-                  <input
-                    type="text"
-                    id="cvv"
-                    name="cvv"
-                    placeholder="123"
-                    value={formData.cvv}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.cvv ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.cvv && (
-                    <p className="text-red-500 text-xs mt-1">{errors.cvv}</p>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-gray-100 dark:bg-gray-800 mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Billing Address
-              </h2>
-
-              <div className="mb-4">
-                <label
-                  htmlFor="billingAddress"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
-                  Address *
-                </label>
-                <input
-                  type="text"
-                  id="billingAddress"
-                  name="billingAddress"
-                  value={formData.billingAddress}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-2 rounded-md border ${errors.billingAddress ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                />
-                {errors.billingAddress && (
-                  <p className="text-red-500 text-xs mt-1">{errors.billingAddress}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label
-                    htmlFor="city"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    id="city"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.city ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.city && (
-                    <p className="text-red-500 text-xs mt-1">{errors.city}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="postalCode"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Postal Code *
-                  </label>
-                  <input
-                    type="text"
-                    id="postalCode"
-                    name="postalCode"
-                    value={formData.postalCode}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 rounded-md border ${errors.postalCode ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-                  />
-                  {errors.postalCode && (
-                    <p className="text-red-500 text-xs mt-1">{errors.postalCode}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="country"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Country *
-                  </label>
-                  <select
-                    id="country"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="Singapore">Singapore</option>
-                    <option value="United States">United States</option>
-                    <option value="Canada">Canada</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Germany">Germany</option>
-                    <option value="France">France</option>
-                    <option value="Japan">Japan</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-            </Card>
-
-            {errors.form && (
-              <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
-                {errors.form}
-              </div>
-            )}
-
-            <div className="flex justify-end mb-8">
+            </div>
+            
+            <div className="flex flex-col md:flex-row justify-end gap-4">
               <Button
-                type="submit"
-                variant="primary"
-                className="py-3 px-8 text-lg font-bold"
-                disabled={isLoading}
+                onClick={handleHomeRedirect}
+                variant="outline"
+                className="w-full md:w-auto flex-1 border-gray-500 text-gray-300 hover:bg-gray-700"
               >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  `Pay $${orderData.total.toFixed(2)}`
-                )}
+                Back to Home
+              </Button>
+              <Button
+                onClick={handleEventRedirect}
+                className="w-full md:w-auto flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Return to Event
               </Button>
             </div>
-          </form>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 };
