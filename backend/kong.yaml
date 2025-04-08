@@ -65,6 +65,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -99,6 +100,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -133,6 +135,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -167,6 +170,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -201,6 +205,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -235,6 +240,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -269,6 +275,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
@@ -303,6 +310,7 @@ services:
             - GET
             - POST
             - PUT
+            - PATCH
             - OPTIONS
           headers:
             - Content-Type
