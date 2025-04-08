@@ -184,7 +184,7 @@ const CheckoutPage = () => {
       const paymentResponse = await confirmPayment(orderData.eventId, orderData.category, orderData.seatCount)
       console.log('Payment confirmed:', paymentResponse)
       // // Simulate processing time
-      // await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // // Generate a random confirmation number
       const confirmationNumber = 'TM-' + Math.random().toString(36).substring(2, 10).toUpperCase();
