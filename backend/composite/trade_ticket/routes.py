@@ -62,7 +62,22 @@ def register_routes(app):
                 res = requests.get(f"{TICKET_SERVICE_URL}/ticket/{ticket_id}")
                 if res.status_code != 200:
                     return jsonify({"error": f"Ticket {ticket_id} not found or not available"}), 404
-                    
+
+            # Check if an identical pending trade request already exists
+            existing = TradeRequest.query.filter_by(
+                ticketID=data["ticketID"],
+                requestedTicketID=data["requestedTicketID"],
+                requesterID=data["requesterID"],
+                requestedUserID=data["requestedUserID"],
+                status="pending"
+            ).first()
+
+            if existing:
+                return jsonify({
+                    "error": "A trade request for these tickets is already pending.",
+                    "existingTradeRequestID": existing.tradeRequestID
+                }), 409  # HTTP 409 Conflict
+
             # Generate new trade request ID
             trade_request_id = str(uuid.uuid4())
 
