@@ -44,7 +44,7 @@ def refund_eligibility(event_id):
 
     logging.debug("Filtered (event) tickets: %s", event_tickets)
 
-    # Check if any ticket is listed for trade or involved in a trade
+    # Step 2: Check if any ticket is listed for trade or involved in a trade
     for ticket in event_tickets:
         listed_status = ticket.get("listed_for_trade")
         # Convert to lowercase string and check if it's "true" or True boolean
@@ -55,7 +55,7 @@ def refund_eligibility(event_id):
                 "isTrading": True
             }), 200
 
-    # Step 2: Get event date
+    # Step 3: Get event date
     event_response = requests.get(f"{EVENT_SERVICE_URL}EventAPI/events/{event_id}")
     if event_response.status_code != 200:
         return jsonify({"error": "Failed to retrieve event details"}), 500
@@ -63,7 +63,7 @@ def refund_eligibility(event_id):
     event_date = event_data["EventResponse"]["EventDate"]
     logging.debug("Event Date: %s", event_date)
 
-    # Check if refund is possible
+    # Step 4: Check if refund is possible
     current_date = datetime.now()
     event_date = datetime.strptime(event_date, "%Y-%m-%d")
     one_week_before_event = event_date - timedelta(weeks=1)
@@ -123,7 +123,6 @@ def cancel_transaction(transaction_id):
     if refund_eligibility is True:
         # Step 6: Refund payment
         payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/{transaction_id}")
-        # payment_response = requests.get(f"{PAYMENT_SERVICE_URL}/payment/txn-433849") ### HARDCODED TRANSACTIONID, CHANGE LATER to the code above
 
         if payment_response.status_code != 200:
             return jsonify({"error": "Failed to retrieve stripeID"}), 500
