@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 db = SQLAlchemy()
 
 def get_singapore_time():
-    return datetime.utcnow + timedelta(hours=8)
+    return datetime.utcnow() + timedelta(hours=8)
 
 # TradeRequest Model
 class TradeRequest(db.Model):
