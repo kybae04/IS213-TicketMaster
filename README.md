@@ -71,6 +71,8 @@ docker compose down
 Important Note on RabbitMQ:
 Our ticket trading logic relies on a local RabbitMQ queue, so trade requests are visible only on the same machine. If you open multiple browser tabs on the same device, it will work as expected. However, other devices will not see each other's trade requests since the queue is not externally hosted.
 
+Also, please give allow a 5-second buffer between actions as our microservices might not be communicating fast enough for responses to be given immediately. If you face an error the first time after clicking a button, it is usually because it was clicked before the microservices were able to complete their api calls. Just click it again or wait 5-10 seconds before clicking it and they should work fine.
+
 ## Test Accounts
 
 For your convenience, here are some ready-made test accounts you can use:

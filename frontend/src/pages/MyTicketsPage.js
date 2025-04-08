@@ -152,6 +152,7 @@ const MyTicketsPage = () => {
     setShowDetailsModal(true);
 
     try {
+      // Only fetch details for the specific transaction
       await fetchTicketDetails(transaction.transactionID);
     } catch (error) {
       console.error("Error fetching ticket details:", error);
@@ -189,6 +190,11 @@ const MyTicketsPage = () => {
       if (selectedTransaction) {
         await fetchTicketDetails(selectedTransaction.transactionID);
       }
+
+      // Set up a timer to refresh all tickets data after notification disappears
+      setTimeout(async () => {
+        await fetchGroupedTickets();
+      }, 3100); // Just after the notification disappears (3000ms + 100ms buffer)
 
     } catch (error) {
       console.error("Error updating trade status:", error);

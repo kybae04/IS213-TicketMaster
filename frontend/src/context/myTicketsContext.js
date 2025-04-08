@@ -233,13 +233,8 @@ export const MyTicketProvider = ({ children }) => {
       return;
     }
     
-    // If we already have the data and it's not loading, don't fetch again
-    if (state.ticketDetails[transactionID] && 
-        !state.ticketDetails[transactionID].loading && 
-        state.ticketDetails[transactionID].data) {
-      console.log(`Already have data for transaction ${transactionID}, skipping fetch`);
-      return;
-    }
+    // Always get fresh data for ticket details - removing the skip condition
+    // that previously would return early if we already had the data
     
     // Skip if already fetching this transaction
     if (pendingFetchesRef.current[`ticketDetails_${transactionID}`]) {

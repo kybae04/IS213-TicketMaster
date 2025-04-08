@@ -419,7 +419,47 @@ const TradingPage = () => {
     setShowTradeModal(true);
   };
 
-  // Handle show ticket details in modal
+  // New function to refresh data and then show details
+  const refreshAndShowDetails = async (transaction) => {
+    setSelectedTransaction(transaction);
+    setDetailsLoading(true);
+    setShowDetailsModal(true);
+    
+    try {
+      // Instead of refreshing all tickets, only get the specific transaction's tickets
+      const updatedTickets = await myTicketService.getTicketsByTransaction(transaction.transactionID);
+      
+      if (updatedTickets && updatedTickets.length > 0) {
+        // Update only these specific tickets in the local state
+        setUserTickets(prev => {
+          // Create a map of ticketIDs to updated tickets for quick lookup
+          const updatedTicketsMap = {};
+          updatedTickets.forEach(ticket => {
+            updatedTicketsMap[ticket.ticketID] = ticket;
+          });
+          
+          // Update only the tickets that match this transaction
+          return prev.map(ticket => 
+            ticket.transactionID === transaction.transactionID && updatedTicketsMap[ticket.ticketID] 
+              ? { ...ticket, ...updatedTicketsMap[ticket.ticketID] }
+              : ticket
+          );
+        });
+      }
+      
+      // Only refresh trade requests related to this transaction's tickets if needed
+      const hasListedTickets = updatedTickets?.some(ticket => ticket.listed_for_trade);
+      if (hasListedTickets) {
+        await fetchPendingTradeRequests();
+      }
+    } catch (error) {
+      console.error("Error refreshing specific transaction data:", error);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  // Original handle show ticket details in modal (keeping for compatibility)
   const handleShowDetails = (transaction) => {
     setSelectedTransaction(transaction);
     setShowDetailsModal(true);
@@ -448,15 +488,39 @@ const TradingPage = () => {
         message: 'Trade request sent successfully'
       });
       
-      // Refresh trade requests
-      fetchPendingTradeRequests();
+      // First fetch the updated trade requests immediately
+      await fetchPendingTradeRequests();
       
-      // Scroll to trade requests section if it exists
-      if (tradeRequestsRef.current) {
-        setTimeout(() => {
-          tradeRequestsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 500);
-      }
+      // Need to wait a bit for the DOM to update with the new requests before scrolling
+      setTimeout(() => {
+        // Check if the ref exists now (after the fetch and DOM update)
+        if (tradeRequestsRef.current) {
+          // Scroll to a position slightly above the trade requests section to ensure it's visible
+          const yOffset = -100; // Negative offset to scroll higher up
+          const element = tradeRequestsRef.current;
+          const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          
+          window.scrollTo({
+            top: y,
+            behavior: 'smooth'
+          });
+          
+          // Add a visual highlight effect to draw attention to the new request
+          tradeRequestsRef.current.classList.add('highlight-pulse');
+          setTimeout(() => {
+            tradeRequestsRef.current.classList.remove('highlight-pulse');
+          }, 2000);
+        } else {
+          // As a fallback, scroll to top of page
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 300);
+      
+      // Still refresh again after notification to ensure everything is up to date
+      setTimeout(async () => {
+        await fetchPendingTradeRequests();
+      }, 3100);
+      
     } catch (error) {
       console.error('Error sending trade request:', error);
       
@@ -494,8 +558,15 @@ const TradingPage = () => {
       // Then perform the API call (async)
       await myTicketService.toggleTradeStatus(ticket.ticketID, ticket.listed_for_trade);
       
-      // Refresh user tickets to ensure UI is in sync with backend
-      fetchUserTickets();
+      // Set up a timer to refresh the user tickets after notification disappears
+      setTimeout(async () => {
+        await fetchUserTickets();
+        // If a ticket was listed for trade, also refresh trade requests to show new potential trades
+        if (newStatus) {
+          await fetchPendingTradeRequests();
+        }
+      }, 3100); // Just after the notification disappears (3000ms + 100ms buffer)
+      
     } catch (error) {
       console.error('Error toggling trade status:', error);
       
@@ -661,9 +732,11 @@ const TradingPage = () => {
         message: 'Trade request accepted successfully! Tickets have been swapped.'
       });
       
-      // Refresh trade requests and tickets
-      await fetchPendingTradeRequests();
-      await fetchUserTickets();
+      // Set up a timer to refresh data after notification disappears
+      setTimeout(async () => {
+        await fetchPendingTradeRequests();
+        await fetchUserTickets();
+      }, 3100); // Just after the notification disappears (3000ms + 100ms buffer)
       
     } catch (error) {
       console.error('Error accepting trade request:', error);
@@ -695,8 +768,10 @@ const TradingPage = () => {
         message: 'Trade request declined successfully.'
       });
       
-      // Refresh trade requests
-      await fetchPendingTradeRequests();
+      // Set up a timer to refresh trade requests after notification disappears
+      setTimeout(async () => {
+        await fetchPendingTradeRequests();
+      }, 3100); // Just after the notification disappears (3000ms + 100ms buffer)
       
     } catch (error) {
       console.error('Error declining trade request:', error);
@@ -728,8 +803,10 @@ const TradingPage = () => {
         message: 'Trade request cancelled successfully.'
       });
       
-      // Refresh trade requests
-      await fetchPendingTradeRequests();
+      // Set up a timer to refresh trade requests after notification disappears
+      setTimeout(async () => {
+        await fetchPendingTradeRequests();
+      }, 3100); // Just after the notification disappears (3000ms + 100ms buffer)
       
     } catch (error) {
       console.error('Error cancelling trade request:', error);
@@ -846,12 +923,22 @@ const TradingPage = () => {
             100% { opacity: 0.8; }
           }
           
+          @keyframes highlightPulse {
+            0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+          }
+          
           .animate-fade-in {
             animation: fadeIn 1.2s ease-out forwards;
           }
           
           .animate-pulse-slow {
             animation: slowPulse 3s infinite;
+          }
+          
+          .highlight-pulse {
+            animation: highlightPulse 1s ease-in-out 2;
           }
           
           .glow-text {
@@ -984,9 +1071,9 @@ const TradingPage = () => {
           </h1>
         </div>
       
-        {/* Pending Trade Requests Section */}
-        {(incomingRequests.length > 0 || outgoingRequests.length > 0) && (
-          <div ref={tradeRequestsRef} className="mb-8">
+        {/* Pending Trade Requests Section - Always render this container for the ref */}
+        <div ref={tradeRequestsRef} className="mb-8 scroll-mt-32 pt-4">
+          {(incomingRequests.length > 0 || outgoingRequests.length > 0) ? (
             <Card className="p-5 bg-gradient-to-r from-purple-500/10 to-purple-600/10 border-2 border-purple-500/30">
               <h3 className="text-xl text-purple-400 font-semibold mb-4">Pending Trade Requests</h3>
               
@@ -1153,8 +1240,17 @@ const TradingPage = () => {
                 </>
               )}
             </Card>
-          </div>
-        )}
+          ) : (
+            <div className="bg-[#12203f] p-8 text-center rounded-lg">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <p className="text-gray-300 mb-4">
+                No pending trade requests at the moment.
+              </p>
+            </div>
+          )}
+        </div>
         
         {/* Trading Rules (Highlighted and Prominent) */}
         <Card className="p-5 mb-8 bg-gradient-to-r from-blue-500/10 to-blue-600/10 border-2 border-blue-500/30">
@@ -1221,7 +1317,7 @@ const TradingPage = () => {
                         <Button
                           className="w-full text-sm bg-blue-700 hover:bg-blue-600 text-white"
                           variant="default"
-                          onClick={() => handleShowDetails(transaction)}
+                          onClick={() => refreshAndShowDetails(transaction)}
                         >
                           Ticket Details
                         </Button>
