@@ -80,14 +80,18 @@ const MyTicketsPage = () => {
           'You are unable to cancel this transaction as it contains tickets within a trade.'
         );
         setShowOkButton(true); // Show only the "Ok" button
-        // setShowCancelModal(true)
       } else {
         console.log('Refund eligibility result:', result);
         const ticketData = { ...txn, refundEligible: result.refund_eligibility };
         setTicketToCancel(ticketData);
 
+        // Set the cancel modal message based on refund eligibility
+        const refundMessage = result.refund_eligibility
+          ? 'You are eligible to receive a full refund.'
+          : 'You will not be able to receive a full refund but you may still proceed to cancel.';
+
         setCancelModalMessage(
-          `Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}?`
+          `Are you sure you want to cancel ${ticketData.numTickets} ticket(s) for ${ticketData.eventTitle}? ${refundMessage}`
         );
         setShowOkButton(false); // Show "Cancel" and "Confirm" buttons
       }
@@ -621,26 +625,26 @@ const MyTicketsPage = () => {
             
             <div className="flex justify-end gap-4">
               {showOkButton ? (
-                <button
+                <Button
                   onClick={() => setShowCancelModal(false)}
                   className="bg-blue-500 text-white px-4 py-2 rounded"
                 >
                   Ok
-                </button>
+                </Button>
               ) : (
                 <>
-                  <button
+                  <Button
                     onClick={() => setShowCancelModal(false)}
                     className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
                   >
                     Go Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={confirmCancellation}
                     className="bg-red-600 text-white px-4 py-2 rounded"
                   >
                     Confirm Cancel
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
