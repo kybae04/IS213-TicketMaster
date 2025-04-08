@@ -169,6 +169,9 @@ const MyTicketsPage = () => {
       // Clear any existing notification first
       setNotification(null);
 
+      // Determine the new status (opposite of current status)
+      const newStatus = !ticket.listed_for_trade;
+
       // Show notification after a small delay to ensure animation works properly
       setTimeout(() => {
         setNotification({
@@ -178,7 +181,7 @@ const MyTicketsPage = () => {
       }, 10);
 
       // Then perform the API call (async)
-      await myTicketService.toggleTradeStatus(ticket.ticketID, false);
+      await myTicketService.toggleTradeStatus(ticket.ticketID, ticket.listed_for_trade);
 
       // No need to refresh the page or fetch new data
       // The UI is already updated with the modal closing and notification
@@ -717,6 +720,21 @@ const MyTicketsPage = () => {
                             </div>
 
                             <div className="flex gap-2 mt-4">
+<<<<<<< Updated upstream
+=======
+                              <Button
+                                className="flex-1 text-sm bg-gray-800 hover:bg-gray-700 text-white border border-blue-700"
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedTicket(ticket);
+                                  setShowQRModal(true);
+                                }}
+                              >
+                                Show QR Code
+                              </Button>
+
+                            {ticket.status !== 'voided' && ticket.tradability?.tradable && (
+>>>>>>> Stashed changes
                               <Button
                                 className="flex-1 text-sm bg-gray-800 hover:bg-gray-700 text-white border border-blue-700"
                                 variant="default"

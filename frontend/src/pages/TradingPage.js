@@ -493,6 +493,9 @@ const TradingPage = () => {
     try {
       // Then perform the API call (async)
       await myTicketService.toggleTradeStatus(ticket.ticketID, ticket.listed_for_trade);
+      
+      // Refresh user tickets to ensure UI is in sync with backend
+      fetchUserTickets();
     } catch (error) {
       console.error('Error toggling trade status:', error);
       
@@ -1552,7 +1555,7 @@ const TradingPage = () => {
                               setShowDetailsModal(false);
                             }}
                           >
-                            {ticket.listed_for_trade ? 'Listed for Trade' : 'List for Trade'}
+                            {ticket.listed_for_trade ? 'Unlist from Trade' : 'List for Trade'}
                           </Button>
                         </div>
                       </div>

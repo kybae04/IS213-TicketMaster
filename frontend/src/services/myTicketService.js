@@ -64,14 +64,18 @@ const myTicketService = {
     // Toggle a ticket's listed_for_trade status
     toggleTradeStatus: async (ticketID, currentStatus) => {
         try {
+            // Send the request to update the trade status
             const response = await apiClient.put(`/ticket/${ticketID}/list-for-trade`, {
                 listed_for_trade: !currentStatus
-            })
-            return response.data
+            });
+            
+            // Return the updated ticket data
+            console.log('Trade status toggled successfully:', response.data);
+            return response.data;
         }
         catch (error) {
-            console.error('Error toggling trade status:', error)
-            throw error
+            console.error('Error toggling trade status:', error);
+            throw error;
         }
     },
 
