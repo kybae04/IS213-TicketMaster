@@ -195,30 +195,24 @@ const MyTicketsPage = () => {
 
   if (error) {
     return (
-      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] py-4 px-4">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold text-white text-center mb-6">My Tickets</h1>
-
-          <div className="p-4 bg-red-100 border border-red-400 rounded mb-4">
-            <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Tickets</h3>
-            <p className="text-red-700 mb-4">{error}</p>
-
-            <div className="bg-white p-4 rounded border border-red-200 mb-4">
-              <h4 className="font-medium mb-2">Possible Solutions:</h4>
-              <ul className="list-disc list-inside">
-                <li>Ensure you are logged in with a valid account</li>
-                <li>Check that your account has tickets associated with it</li>
-                <li>Try logging out and logging back in</li>
-              </ul>
-            </div>
-
-            <div className="flex justify-center">
-              <button
-                onClick={fetchGroupedTickets}
-                className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
+      <div className="bg-[#121a2f] min-h-[calc(100vh-64px)] container mx-auto px-4 flex flex-col justify-start items-center">
+        <div className="w-full max-w-5xl">
+          <h1 className="text-3xl font-bold text-white text-center mb-8">My Tickets</h1>
+          
+          <div className="bg-[#1a2642] rounded-lg p-8 text-center max-w-md mx-auto border border-blue-900">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h3 className="mt-2 text-lg font-medium text-white">No tickets found</h3>
+            <p className="mt-1 text-gray-400">Browse events and purchase tickets to see them here.</p>
+            <div className="mt-6">
+              <Button 
+                onClick={() => navigate('/')}
+                variant="primary"
+                className="font-bold"
               >
-                Try Again
-              </button>
+                Browse Events
+              </Button>
             </div>
           </div>
         </div>

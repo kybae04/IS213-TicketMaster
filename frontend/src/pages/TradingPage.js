@@ -648,7 +648,9 @@ const TradingPage = () => {
   const handleAcceptTradeRequest = useCallback(async (tradeRequestId) => {
     try {
       setIsLoadingRequests(true);
-      await tradeService.acceptTradeRequest(tradeRequestId);
+      
+      // Pass the backendUserId to the acceptTradeRequest method
+      await tradeService.acceptTradeRequest(tradeRequestId, backendUserId);
       
       // Close the modal
       setShowAcceptModal(false);
@@ -674,13 +676,15 @@ const TradingPage = () => {
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [fetchPendingTradeRequests, fetchUserTickets]);
+  }, [fetchPendingTradeRequests, fetchUserTickets, backendUserId]);
 
   // Handle declining a trade request
   const handleDeclineTradeRequest = useCallback(async (tradeRequestId) => {
     try {
       setIsLoadingRequests(true);
-      await tradeService.cancelTradeRequest(tradeRequestId);
+      
+      // Pass the backendUserId to the cancelTradeRequest method
+      await tradeService.cancelTradeRequest(tradeRequestId, backendUserId);
       
       // Close the modal
       setShowDeclineModal(false);
@@ -705,13 +709,15 @@ const TradingPage = () => {
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [fetchPendingTradeRequests]);
+  }, [fetchPendingTradeRequests, backendUserId]);
 
   // Handle cancelling a trade request
   const handleCancelTradeRequest = useCallback(async (tradeRequestId) => {
     try {
       setIsLoadingRequests(true);
-      await tradeService.cancelTradeRequest(tradeRequestId);
+      
+      // Pass the backendUserId to the cancelTradeRequest method
+      await tradeService.cancelTradeRequest(tradeRequestId, backendUserId);
       
       // Close the modal
       setShowCancelModal(false);
@@ -736,7 +742,7 @@ const TradingPage = () => {
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [fetchPendingTradeRequests]);
+  }, [fetchPendingTradeRequests, backendUserId]);
 
   // Function to open accept confirmation modal
   const openAcceptConfirmation = (request) => {
