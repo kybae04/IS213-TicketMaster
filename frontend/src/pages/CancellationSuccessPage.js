@@ -11,9 +11,10 @@ const CancellationSuccessPage = () => {
   useEffect(() => {
     // Get cancelled ticket data from navigation state
     if (location.state?.ticket) {
+      console.log(location.state.ticket)
       setCancelledTicket({
         ...location.state.ticket,
-        refundAmount: location.state.ticket.price,
+        refundAmount: location.state.ticket.price || 0,
         // refundDate: new Date().toLocaleDateString(),
         // estimatedRefundDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString()
       });
@@ -135,7 +136,7 @@ const CancellationSuccessPage = () => {
           <div className="mb-4">
             <div className="flex justify-between mb-1">
               <span className="text-green-200">Refund Amount:</span>
-              <span className="text-white font-bold">${cancelledTicket.refundAmount}</span>
+              <span className="text-white font-bold">${cancelledTicket.refundAmount || cancelledTicket.price || 0}</span>
             </div>
             <div className="flex justify-between mb-1">
               <span className="text-green-200">Refund Method:</span>
