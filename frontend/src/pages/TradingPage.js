@@ -648,7 +648,7 @@ const TradingPage = () => {
   const handleAcceptTradeRequest = useCallback(async (tradeRequestId) => {
     try {
       setIsLoadingRequests(true);
-      await tradeService.acceptTradeRequest(tradeRequestId, backendUserId);
+      await tradeService.acceptTradeRequest(tradeRequestId);
       
       // Close the modal
       setShowAcceptModal(false);
@@ -674,13 +674,13 @@ const TradingPage = () => {
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [backendUserId, fetchPendingTradeRequests, fetchUserTickets]);
+  }, [fetchPendingTradeRequests, fetchUserTickets]);
 
   // Handle declining a trade request
   const handleDeclineTradeRequest = useCallback(async (tradeRequestId) => {
     try {
       setIsLoadingRequests(true);
-      await tradeService.cancelTradeRequest(tradeRequestId, backendUserId);
+      await tradeService.cancelTradeRequest(tradeRequestId);
       
       // Close the modal
       setShowDeclineModal(false);
@@ -705,13 +705,13 @@ const TradingPage = () => {
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [backendUserId, fetchPendingTradeRequests]);
+  }, [fetchPendingTradeRequests]);
 
   // Handle cancelling a trade request
   const handleCancelTradeRequest = useCallback(async (tradeRequestId) => {
     try {
       setIsLoadingRequests(true);
-      await tradeService.cancelTradeRequest(tradeRequestId, backendUserId);
+      await tradeService.cancelTradeRequest(tradeRequestId);
       
       // Close the modal
       setShowCancelModal(false);
@@ -736,7 +736,7 @@ const TradingPage = () => {
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [backendUserId, fetchPendingTradeRequests]);
+  }, [fetchPendingTradeRequests]);
 
   // Function to open accept confirmation modal
   const openAcceptConfirmation = (request) => {
@@ -1352,9 +1352,7 @@ const TradingPage = () => {
                 <div className="bg-[#12203f] p-3 rounded-lg">
                   <h4 className="font-medium text-white text-sm mb-2">Trade For:</h4>
                   <p className="text-gray-200 font-medium">{selectedTicket.eventTitle}</p>
-                  <p className="text-gray-300 text-sm">
-                    {selectedTicket.eventDate}
-                  </p>
+                  <p className="text-gray-300 text-sm">{selectedTicket.eventDate}</p>
                   {(() => {
                     const seatDetails = parseSeatDetails(ticketToTrade.seatID);
                     return (
